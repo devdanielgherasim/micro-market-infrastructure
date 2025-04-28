@@ -1,15 +1,21 @@
+image: alpine:latest
+
+
 stages:
   - validate
   - plan
   - apply
-
-image: hashicorp/terraform:1.7.2
 
 variables:
   TF_DEV_ROOT: "terraform/environments/azure/dev"
   TF_PROD_ROOT: "terraform/environments/azure/prod"
 
 before_script:
+  - apk add --no-cache bash curl unzip
+  - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
+  - unzip terraform.zip
+  - mv terraform /usr/local/bin/
+  - terraform version
   - |
     if [[ "$CI_COMMIT_REF_NAME" == "prod" ]]; then
       export TF_ROOT=$TF_PROD_ROOT
@@ -20,6 +26,7 @@ before_script:
     fi
   - cd $TF_ROOT
   - terraform init -input=false
+
 
 validate:
   stage: validate
