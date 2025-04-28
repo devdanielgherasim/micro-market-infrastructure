@@ -13,7 +13,7 @@ variables:
 before_script:
   - apk add --no-cache bash curl unzip
   - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
-  - unzip terraform.zip
+  - unzip -o terraform.zip
   - mv terraform /usr/local/bin/
   - terraform version
   - |
@@ -26,6 +26,7 @@ before_script:
     fi
   - cd $TF_ROOT
   - terraform init -input=false
+
 
 
 validate:
