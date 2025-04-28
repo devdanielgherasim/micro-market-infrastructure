@@ -21,11 +21,12 @@ before_script:
     fi
   - cd $TF_ROOT
 
-  # Azure OIDC Login manually
+  # Azure OIDC login correctly
   - echo "Authenticating to Azure with OIDC"
-  - az login --service-principal --tenant $ARM_TENANT_ID --username $ARM_CLIENT_ID --federated-token $CI_JOB_JWT_V2
+  - az login --service-principal --username $ARM_CLIENT_ID --federated-token $CI_JOB_JWT_V2 --tenant $ARM_TENANT_ID
   - az account set --subscription $ARM_SUBSCRIPTION_ID
   - terraform init -input=false
+
 
 validate:
   stage: validate
