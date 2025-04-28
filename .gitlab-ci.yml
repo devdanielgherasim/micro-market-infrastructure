@@ -1,3 +1,5 @@
+image: mcr.microsoft.com/azure-cli
+
 stages:
   - validate
   - plan
