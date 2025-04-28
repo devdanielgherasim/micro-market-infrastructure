@@ -12,9 +12,11 @@ variables:
 
 before_script:
   - apk add --no-cache bash curl unzip
+  # Download Terraform
   - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
-  - unzip -o terraform.zip
-  - mv terraform /usr/local/bin/
+  - mkdir tmp_terraform
+  - unzip terraform.zip -d tmp_terraform
+  - mv tmp_terraform/terraform /usr/local/bin/
   - terraform version
   - |
     if [[ "$CI_COMMIT_REF_NAME" == "prod" ]]; then
@@ -26,6 +28,7 @@ before_script:
     fi
   - cd $TF_ROOT
   - terraform init -input=false
+
 
 
 
