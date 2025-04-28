@@ -4,13 +4,13 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.80.0"   # Or your required version
+      version = ">= 3.80.0"
     }
   }
 }
 
 provider "azurerm" {
-  features {}  # <-- THIS IS MANDATORY
+  features {}
 
   use_oidc        = true
   client_id       = var.client_id
