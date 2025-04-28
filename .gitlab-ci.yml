@@ -1,16 +1,15 @@
-image: mcr.microsoft.com/azure-cli
-
 stages:
   - validate
   - plan
   - apply
+
+image: hashicorp/terraform:1.7.2
 
 variables:
   TF_DEV_ROOT: "terraform/environments/azure/dev"
   TF_PROD_ROOT: "terraform/environments/azure/prod"
 
 before_script:
-  # Dynamic environment selection
   - |
     if [[ "$CI_COMMIT_REF_NAME" == "prod" ]]; then
       export TF_ROOT=$TF_PROD_ROOT
@@ -20,13 +19,7 @@ before_script:
       export ARM_SUBSCRIPTION_ID=$DEV_ARM_SUBSCRIPTION_ID
     fi
   - cd $TF_ROOT
-
-  # Azure OIDC login correctly
-  - echo "Authenticating to Azure with OIDC"
-  - az login --service-principal --username $ARM_CLIENT_ID --federated-token $CI_JOB_JWT_V2 --tenant $ARM_TENANT_ID
-  - az account set --subscription $ARM_SUBSCRIPTION_ID
   - terraform init -input=false
-
 
 validate:
   stage: validate
