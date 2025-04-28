@@ -3,11 +3,6 @@ stages:
   - plan
   - apply
 
-# Enable OIDC globally
-default:
-  authentication:
-    oidc: true
-
 variables:
   TF_DEV_ROOT: "terraform/environments/azure/dev"
   TF_PROD_ROOT: "terraform/environments/azure/prod"
@@ -24,7 +19,8 @@ before_script:
     fi
   - cd $TF_ROOT
 
-  # Azure OIDC Login
+  # Azure OIDC Login manually
+  - echo "Authenticating to Azure with OIDC"
   - az login --service-principal --tenant $ARM_TENANT_ID --username $ARM_CLIENT_ID --federated-token $CI_JOB_JWT_V2
   - az account set --subscription $ARM_SUBSCRIPTION_ID
   - terraform init -input=false
