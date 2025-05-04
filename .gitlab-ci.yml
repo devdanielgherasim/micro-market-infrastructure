@@ -13,10 +13,12 @@ before_script:
   - unzip terraform.zip -d tmp && mv tmp/terraform /usr/local/bin/
   - terraform version
   - cd $TF_ROOT
-  # Inject GitLab OIDC vars into Terraform
+
+  # 🔐 THIS IS CRITICAL:
   - export TF_VAR_client_id=$ARM_CLIENT_ID
   - export TF_VAR_tenant_id=$ARM_TENANT_ID
   - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+
 
 plan:
   stage: plan
