@@ -7,22 +7,20 @@ stages:
 variables:
   TF_ROOT: terraform/environments/azure/dev
 
+# 🔐 This section installs Terraform and injects OIDC vars
 before_script:
-  - apk add --no-cache curl unzip bash
-  - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
-  - unzip terraform.zip -d tmp && mv tmp/terraform /usr/local/bin/
-  - terraform version
-  - cd $TF_ROOT
-
-  # 🔐 THIS IS CRITICAL:
-  - export TF_VAR_client_id=$ARM_CLIENT_ID
-  - export TF_VAR_tenant_id=$ARM_TENANT_ID
-  - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-  - echo "Client ID: $TF_VAR_client_id"
-  - echo "Tenant ID: $TF_VAR_tenant_id"
-  - echo "Subscription ID: $TF_VAR_subscription_id"
-
-
+  - |
+    apk add --no-cache curl unzip bash
+    curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
+    unzip terraform.zip -d tmp && mv tmp/terraform /usr/local/bin/
+    terraform version
+    cd $TF_ROOT
+    export TF_VAR_client_id=$ARM_CLIENT_ID
+    export TF_VAR_tenant_id=$ARM_TENANT_ID
+    export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+    echo "Client ID: $TF_VAR_client_id"
+    echo "Tenant ID: $TF_VAR_tenant_id"
+    echo "Subscription ID: $TF_VAR_subscription_id"
 
 plan:
   stage: plan
