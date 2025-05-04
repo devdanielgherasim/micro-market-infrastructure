@@ -1,6 +1,5 @@
 client_id       = "45eec3e3-f33d-4d9a-a675-40d3048844a2"
 subscription_id = "fa77afbb-f924-48ff-9fa3-5cd94bf4cb57"
 tenant_id       = "607d63ca-9f36-4ad8-9f71-8b3efc392eb1"
-
-resource_group_name = "dev-infra-rg"
 location            = "westeurope"
+resource_group_name = "dev-infra-rg"

@@ -1,24 +1,15 @@
 variable "client_id" {
-  type        = string
-  description = "Azure AD Application Client ID"
+  type = string
 }
-
-variable "subscription_id" {
-  type        = string
-  description = "Azure Subscription ID"
-}
-
 variable "tenant_id" {
-  type        = string
-  description = "Azure Tenant ID"
+  type = string
 }
-
-variable "resource_group_name" {
-  type        = string
-  description = "Azure Resource Group"
+variable "subscription_id" {
+  type = string
 }
-
 variable "location" {
-  type        = string
-  description = "Azure Region"
+  type = string
+}
+variable "resource_group_name" {
+  type = string
 }

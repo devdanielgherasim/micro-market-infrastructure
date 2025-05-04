@@ -1,24 +1,21 @@
 variable "name" {
-  type        = string
-  description = "Name of the container registry"
+  type = string
 }
 
 variable "resource_group_name" {
-  type        = string
-  description = "Resource Group name"
+  type = string
 }
 
 variable "location" {
-  type        = string
-  description = "Azure location"
+  type = string
 }
 
 variable "sku" {
-  type        = string
-  default     = "Basic"
+  type    = string
+  default = "Basic"
 }
 
 variable "admin_enabled" {
-  type        = bool
-  default     = false
+  type    = bool
+  default = false
 }
