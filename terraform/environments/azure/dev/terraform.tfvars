@@ -4,6 +4,3 @@ tenant_id       = "607d63ca-9f36-4ad8-9f71-8b3efc392eb1"
 
 resource_group_name = "dev-infra-rg"
 location            = "westeurope"
-tags = {
-  environment = "dev"
-}
