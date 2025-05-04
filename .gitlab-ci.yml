@@ -1,41 +1,20 @@
 image: alpine:latest
 
-
 stages:
-  - validate
   - plan
   - apply
 
-variables:
-  TF_DEV_ROOT: "terraform/environments/azure/dev"
-  TF_PROD_ROOT: "terraform/environments/azure/prod"
-
 before_script:
-  - apk add --no-cache bash curl unzip
-  # Download Terraform
+  - apk add --no-cache curl unzip bash
   - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
-  - mkdir tmp_terraform
-  - unzip terraform.zip -d tmp_terraform
-  - mv tmp_terraform/terraform /usr/local/bin/
+  - unzip terraform.zip -d tmp && mv tmp/terraform /usr/local/bin/
   - terraform version
-  - |
-    if [[ "$CI_COMMIT_REF_NAME" == "prod" ]]; then
-      export TF_ROOT=$TF_PROD_ROOT
-      export ARM_SUBSCRIPTION_ID=$PROD_ARM_SUBSCRIPTION_ID
-    else
-      export TF_ROOT=$TF_DEV_ROOT
-      export ARM_SUBSCRIPTION_ID=$DEV_ARM_SUBSCRIPTION_ID
-    fi
+  - export TF_ROOT="terraform/environments/azure/dev"
   - cd $TF_ROOT
+  - export TF_VAR_client_id=$ARM_CLIENT_ID
+  - export TF_VAR_tenant_id=$ARM_TENANT_ID
+  - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
   - terraform init -input=false
-
-
-
-
-validate:
-  stage: validate
-  script:
-    - terraform validate
 
 plan:
   stage: plan
@@ -43,7 +22,7 @@ plan:
     - terraform plan -out=tfplan
   artifacts:
     paths:
-      - tfplan
+      - terraform/environments/azure/dev/tfplan
 
 apply:
   stage: apply
@@ -52,4 +31,3 @@ apply:
   when: manual
   only:
     - dev
-    - prod

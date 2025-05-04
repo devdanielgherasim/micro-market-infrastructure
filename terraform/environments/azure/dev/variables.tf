@@ -1,29 +1,24 @@
-variable "resource_group_name" {
-  description = "Azure resource group name."
-  type        = string
-}
-
-variable "location" {
-  description = "Azure location."
-  type        = string
-}
-
-variable "tags" {
-  description = "Common tags."
-  type        = map(string)
-}
-
 variable "client_id" {
-  description = "Client id."
   type        = string
+  description = "Azure AD Application Client ID"
 }
 
 variable "subscription_id" {
-  description = "subscription_id"
   type        = string
+  description = "Azure Subscription ID"
 }
 
 variable "tenant_id" {
-  description = "tenant_id"
   type        = string
+  description = "Azure Tenant ID"
+}
+
+variable "resource_group_name" {
+  type        = string
+  description = "Azure Resource Group"
+}
+
+variable "location" {
+  type        = string
+  description = "Azure Region"
 }
