@@ -10,12 +10,18 @@ variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
 
-.terraform-defaults: &terraform-defaults
+# Shared cache only (no script logic to avoid leaks)
+.terraform-cache: &terraform-cache
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
       - ${TF_ROOT}/.terraform
     policy: pull
+
+# Validate Terraform configs
+validate:
+  stage: validate
+  <<: *terraform-cache
   before_script:
     - cd ${TF_ROOT}
     - export TF_VAR_client_id=$ARM_CLIENT_ID
@@ -24,10 +30,6 @@ variables:
     - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
     - export TF_VAR_location=$ARM_LOCATION
     - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
-
-validate:
-  stage: validate
-  <<: *terraform-defaults
   script:
     - terraform init -backend=false
     - terraform validate
@@ -35,9 +37,18 @@ validate:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
+# Terraform Plan
 plan:
   stage: plan
-  <<: *terraform-defaults
+  <<: *terraform-cache
+  before_script:
+    - cd ${TF_ROOT}
+    - export TF_VAR_client_id=$ARM_CLIENT_ID
+    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+    - export TF_VAR_tenant_id=$ARM_TENANT_ID
+    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+    - export TF_VAR_location=$ARM_LOCATION
+    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
   script:
     - terraform init
     - terraform plan -out=tfplan
@@ -51,9 +62,18 @@ plan:
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
+# Terraform Apply
 apply:
   stage: apply
-  <<: *terraform-defaults
+  <<: *terraform-cache
+  before_script:
+    - cd ${TF_ROOT}
+    - export TF_VAR_client_id=$ARM_CLIENT_ID
+    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+    - export TF_VAR_tenant_id=$ARM_TENANT_ID
+    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+    - export TF_VAR_location=$ARM_LOCATION
+    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
   script:
     - terraform init
     - terraform apply -auto-approve tfplan
