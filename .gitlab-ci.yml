@@ -41,7 +41,7 @@ plan:
   script:
     - terraform init
     - terraform plan -out=tfplan
-    - "terraform show -json tfplan > plan.json"
+    - bash -c "terraform show -json tfplan > plan.json"
   artifacts:
     paths:
       - ${TF_ROOT}/tfplan
