@@ -9,29 +9,31 @@ variables:
   TF_ROOT: terraform/environments/azure/dev
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
+  TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
 
-# Shared cache only (no script logic to avoid leaks)
 .terraform-cache: &terraform-cache
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
       - ${TF_ROOT}/.terraform
-    policy: pull
+      - .terraform.d/plugin-cache
+    policy: pull-push
 
-# Validate Terraform configs
+.before_script_common: &before_script_common
+  - echo "Starting job in $CI_JOB_STAGE stage"
+  - cd ${TF_ROOT}
+  - export TF_VAR_client_id=$ARM_CLIENT_ID
+  - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+  - export TF_VAR_tenant_id=$ARM_TENANT_ID
+  - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+  - export TF_VAR_location=$ARM_LOCATION
+  - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
+
 validate:
   stage: validate
   <<: *terraform-cache
   before_script:
-    - echo "Running validate job"
-    - cd ${TF_ROOT}
-    - ls
-    - export TF_VAR_client_id=$ARM_CLIENT_ID
-    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-    - export TF_VAR_tenant_id=$ARM_TENANT_ID
-    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-    - export TF_VAR_location=$ARM_LOCATION
-    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
+    - *before_script_common
   script:
     - terraform init -backend=false
     - terraform validate
@@ -39,22 +41,15 @@ validate:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
-# Terraform Plan
 plan:
   stage: plan
   <<: *terraform-cache
   before_script:
-    - cd ${TF_ROOT}
-    - export TF_VAR_client_id=$ARM_CLIENT_ID
-    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-    - export TF_VAR_tenant_id=$ARM_TENANT_ID
-    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-    - export TF_VAR_location=$ARM_LOCATION
-    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
+    - *before_script_common
   script:
     - terraform init
     - terraform plan -out=tfplan
-    - bash -c "terraform show -json tfplan > plan.json"
+    - terraform show -json tfplan > plan.json
   artifacts:
     paths:
       - ${TF_ROOT}/tfplan
@@ -64,18 +59,11 @@ plan:
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
-# Terraform Apply
 apply:
   stage: apply
   <<: *terraform-cache
   before_script:
-    - cd ${TF_ROOT}
-    - export TF_VAR_client_id=$ARM_CLIENT_ID
-    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-    - export TF_VAR_tenant_id=$ARM_TENANT_ID
-    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-    - export TF_VAR_location=$ARM_LOCATION
-    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
+    - *before_script_common
   script:
     - terraform init
     - terraform apply -auto-approve tfplan
