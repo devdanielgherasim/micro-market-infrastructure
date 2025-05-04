@@ -1,2 +1,3 @@
 location            = "westeurope"
-resource_group_name = "dev-infra-rg"
+resource_group_name = "microservices"
+environment         = "dev"
