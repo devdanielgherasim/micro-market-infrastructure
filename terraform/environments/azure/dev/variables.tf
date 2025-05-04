@@ -22,6 +22,6 @@ variable "resource_group_name" {
   type = string
 }
 
-variable "environment" {
+variable "acr_name" {
   type = string
 }
