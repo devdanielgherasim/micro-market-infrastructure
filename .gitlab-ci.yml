@@ -1,37 +1,71 @@
-image: alpine:latest
+image: hashicorp/terraform:1.7.2
 
 stages:
+  - validate
   - plan
   - apply
 
 variables:
   TF_ROOT: terraform/environments/azure/dev
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
 
-before_script:
-  - apk add --no-cache curl unzip bash
-  - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.7.2/terraform_1.7.2_linux_amd64.zip
-  - unzip terraform.zip -d tmp && mv tmp/terraform /usr/local/bin/
-  - terraform version
-  - cd $TF_ROOT
-  - export TF_VAR_client_id=$ARM_CLIENT_ID
-  - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-  - export TF_VAR_tenant_id=$ARM_TENANT_ID
-  - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+.terraform-defaults: &terraform-defaults
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - ${TF_ROOT}/.terraform
+    policy: pull
+  before_script:
+    - cd ${TF_ROOT}
+    - export TF_VAR_client_id=$ARM_CLIENT_ID
+    - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+    - export TF_VAR_tenant_id=$ARM_TENANT_ID
+    - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+    - export TF_VAR_location=$ARM_LOCATION
+    - export TF_VAR_resource_group_name=$ARM_RESOURCE_GROUP_NAME
+
+validate:
+  stage: validate
+  <<: *terraform-defaults
+  script:
+    - terraform init -backend=false
+    - terraform validate
+    - terraform fmt -check -diff
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
 plan:
   stage: plan
+  <<: *terraform-defaults
   script:
-    - terraform init -input=false
+    - terraform init
     - terraform plan -out=tfplan
+    - terraform show -json tfplan > plan.json
   artifacts:
     paths:
-      - $TF_ROOT/tfplan
+      - ${TF_ROOT}/tfplan
+      - ${TF_ROOT}/plan.json
+    reports:
+      terraform: ${TF_ROOT}/plan.json
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
 apply:
   stage: apply
+  <<: *terraform-defaults
   script:
-    - cd $TF_ROOT
+    - terraform init
     - terraform apply -auto-approve tfplan
-  when: manual
-  only:
-    - dev
+  dependencies:
+    - plan
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "prod"'
+      when: manual
+      allow_failure: false
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      when: manual
+      allow_failure: true
+  environment:
+    name: $CI_COMMIT_BRANCH
+    deployment_tier: development
