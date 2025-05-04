@@ -4,6 +4,7 @@ stages:
   - validate
   - plan
   - apply
+  - cleanup
 
 variables:
   TF_ROOT: terraform/environments/azure/dev
@@ -79,3 +80,19 @@ apply:
   environment:
     name: $CI_COMMIT_BRANCH
     deployment_tier: development
+
+cleanup:
+  stage: cleanup
+  <<: *terraform-cache
+  before_script:
+    - *before_script_common
+  script:
+    - terraform init
+    - terraform destroy -auto-approve
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      when: manual
+      allow_failure: true
+  environment:
+    name: $CI_COMMIT_BRANCH
+    action: stop
