@@ -18,6 +18,10 @@ before_script:
   - export TF_VAR_client_id=$ARM_CLIENT_ID
   - export TF_VAR_tenant_id=$ARM_TENANT_ID
   - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+  - echo "Client ID: $TF_VAR_client_id"
+  - echo "Tenant ID: $TF_VAR_tenant_id"
+  - echo "Subscription ID: $TF_VAR_subscription_id"
+
 
 
 plan:
