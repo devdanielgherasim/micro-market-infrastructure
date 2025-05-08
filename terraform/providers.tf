@@ -16,6 +16,8 @@ terraform {
     address        = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default"
     lock_address   = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default/lock"
     unlock_address = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default/lock"
+    username       = "gitlab-ci-token"
+    password       = var.GITLAB_TOKEN
   }
 }
 

@@ -40,6 +40,8 @@ variable "acr_sku_name" {
   default     = "Basic"
 }
 
-
-
-
+variable "gitlab_token" {
+  type        = string
+  description = "The GitLab token for authentication."
+  default     = ""
+}
