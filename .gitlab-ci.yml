@@ -34,7 +34,7 @@ validate:
   before_script:
     - *before_script_common
   script:
-    - terraform init
+    - terraform init -reconfigure
     - terraform validate
     - terraform fmt -check -diff
   rules:
