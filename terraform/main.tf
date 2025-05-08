@@ -3,8 +3,14 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
+resource "random_string" "acr-random_string" {
+  length  = 5
+  special = false
+}
+
 resource "azurerm_container_registry" "acr" {
-  name                = "acr${var.project_name}${var.environment}"
+
+  name                = "acr${var.project_name}${var.environment}${random_string.acr-random_string.result}"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
   sku                 = var.acr_sku_name
