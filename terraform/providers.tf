@@ -12,11 +12,11 @@ terraform {
     }
   }
 
-  backend "http" {
-    address        = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default"
-    lock_address   = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default/lock"
-    unlock_address = "https://gitlab.com/api/v4/projects/68748909/terraform/state/default/lock"
-    username       = "adriangherasim1"
+  backend "azurerm" {
+    resource_group_name  = "rg-infrastructure"
+    storage_account_name = "terraformmicrostate"
+    container_name       = "tfstate"
+    key                  = "dev.terraform.tfstate"
   }
 }
 
