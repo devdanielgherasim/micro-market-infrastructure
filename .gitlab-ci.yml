@@ -47,6 +47,8 @@ plan:
   before_script:
     - *before_script_common
   script:
+    - export TF_HTTP_PASSWORD=$GITLAB_TOKEN > .terraformrc
+    - cat .terraformrc
     - terraform init
     - terraform plan --var-file=tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json
