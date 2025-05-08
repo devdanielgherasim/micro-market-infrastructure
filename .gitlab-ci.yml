@@ -23,7 +23,6 @@ variables:
 .before_script_common: &before_script_common
   - echo "Starting job in $CI_JOB_STAGE stage"
   - cd ${TF_ROOT}
-  - export TF_VAR_gitlab_token=$GITLAB_TOKEN
   - export TF_VAR_client_id=$ARM_CLIENT_ID
   - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
   - export TF_VAR_tenant_id=$ARM_TENANT_ID
@@ -47,6 +46,7 @@ plan:
   before_script:
     - *before_script_common
   script:
+    - export TF_HTTP_PASSWORD=$GITLAB_TOKEN > .terraformrc
     - terraform init
     - terraform plan --var-file=tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json

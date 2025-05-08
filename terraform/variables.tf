@@ -39,9 +39,3 @@ variable "acr_sku_name" {
   description = "The SKU of the Azure Container Registry. Default is 'Basic'."
   default     = "Basic"
 }
-
-variable "gitlab_token" {
-  type        = string
-  description = "The GitLab token for authentication."
-  default     = ""
-}
