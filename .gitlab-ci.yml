@@ -27,7 +27,7 @@ variables:
   - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
   - export TF_VAR_tenant_id=$ARM_TENANT_ID
   - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-  - export TF_HTTP_PASSWORD=$GITLAB_TOKEN > .terraformrc
+  - export TF_HTTP_PASSWORD=$GITLAB_TOKEN
 
 validate:
   stage: validate
@@ -48,6 +48,7 @@ plan:
     - *before_script_common
   script:
     - export TF_HTTP_PASSWORD=$GITLAB_TOKEN > .terraformrc
+    - export TF_HTTP_PASSWORD=$GITLAB_TOKEN
     - cat .terraformrc
     - terraform init
     - terraform plan --var-file=tfvars_files/dev.tfvars -out=tfplan
