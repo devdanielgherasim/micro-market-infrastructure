@@ -1,0 +1,5 @@
+location     = "westeurope"
+project_name = "microservices"
+environment  = "dev"
+acr_sku_name = "Basic"
+aks_vm_size  = "Standard_A2_v2"
