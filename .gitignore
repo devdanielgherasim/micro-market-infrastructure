@@ -1,4 +1,5 @@
 plan.bat
+destroy.bat
 terraform/.terraform/*
 
 # Local .terraform directories
@@ -16,7 +17,6 @@ terraform/.terraform/*
 .envrc
 
 # Ignore CLI configuration files
-.terraformrc
 terraform.rc
 /terraform/.terraform/**
 
