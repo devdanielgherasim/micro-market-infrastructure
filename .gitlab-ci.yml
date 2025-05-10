@@ -87,7 +87,7 @@ cleanup:
     - *before_script_common
   script:
     - terraform init
-    - terraform destroy -auto-approve
+    - terraform destroy -auto-approve --var-file=tfvars_files/dev.tfvars
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
       when: manual
