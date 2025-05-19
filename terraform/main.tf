@@ -153,19 +153,36 @@ resource "helm_release" "argocd" {
     value = "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
   }
 
-  set {
-    name  = "server.ingress.tls"
-    value = var.enable_tls ? "[{\"hosts\":[\"argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io\"],\"secretName\":\"argocd-tls\"}]" : "[]"
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "server.ingress.tls[0].hosts[0]"
+      value = "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
+    }
   }
 
-  set {
-    name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
-    value = var.enable_tls ? "${var.cert_manager_issuer_type}-letsencrypt" : ""
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "server.ingress.tls[0].secretName"
+      value = "argocd-tls"
+    }
   }
 
-  set {
-    name  = "server.ingress.annotations.kubernetes\\.io/tls-acme"
-    value = var.enable_tls ? "true" : "false"
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
+      value = "${var.cert_manager_issuer_type}-letsencrypt"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "server.ingress.annotations.kubernetes\\.io/tls-acme"
+      value = "true"
+    }
   }
 
   depends_on = [
@@ -262,24 +279,36 @@ resource "helm_release" "grafana" {
     value = "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
   }
 
-  set {
-    name  = "ingress.tls[0].hosts[0]"
-    value = var.enable_tls ? "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io" : ""
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "ingress.tls[0].hosts[0]"
+      value = "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
+    }
   }
 
-  set {
-    name  = "ingress.tls[0].secretName"
-    value = var.enable_tls ? "grafana-tls" : ""
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "ingress.tls[0].secretName"
+      value = "grafana-tls"
+    }
   }
 
-  set {
-    name  = "ingress.annotations.cert-manager\\.io/cluster-issuer"
-    value = var.enable_tls ? "${var.cert_manager_issuer_type}-letsencrypt" : ""
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "ingress.annotations.cert-manager\\.io/cluster-issuer"
+      value = "${var.cert_manager_issuer_type}-letsencrypt"
+    }
   }
 
-  set {
-    name  = "ingress.annotations.kubernetes\\.io/tls-acme"
-    value = var.enable_tls ? "true" : "false"
+  dynamic "set" {
+    for_each = var.enable_tls ? [1] : []
+    content {
+      name  = "ingress.annotations.kubernetes\\.io/tls-acme"
+      value = "true"
+    }
   }
 
   set {
