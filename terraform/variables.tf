@@ -126,3 +126,21 @@ variable "grafana_replica_count" {
   description = "The number of Grafana server replicas."
   default     = 1
 }
+
+variable "cert_manager_email" {
+  type        = string
+  description = "The email address to use for Let's Encrypt certificate registration."
+  default     = "admin@example.com"
+}
+
+variable "cert_manager_issuer_type" {
+  type        = string
+  description = "The type of Let's Encrypt issuer to use (staging or production)."
+  default     = "staging"
+}
+
+variable "enable_tls" {
+  type        = bool
+  description = "Whether to enable TLS for ingress resources."
+  default     = true
+}

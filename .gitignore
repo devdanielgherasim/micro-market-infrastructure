@@ -1,4 +1,5 @@
 plan.bat
+plan-prod.bat
 destroy.bat
 terraform/.terraform/*
 

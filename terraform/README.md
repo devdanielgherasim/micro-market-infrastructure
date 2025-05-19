@@ -136,6 +136,24 @@ The NGINX Ingress Controller can be customized by modifying the Helm release res
 
 For more information on the available configuration options, see the [NGINX Ingress Controller documentation](https://kubernetes.github.io/ingress-nginx/).
 
+## Certificate Management
+
+This infrastructure uses cert-manager to automatically provision and manage TLS certificates for ingress resources. By default, Let's Encrypt is used as the certificate provider.
+
+### Configuration
+
+The following variables can be used to configure certificate management:
+
+- `cert_manager_email`: The email address to use for Let's Encrypt certificate registration.
+- `cert_manager_issuer_type`: The type of Let's Encrypt issuer to use (`staging` or `production`).
+- `enable_tls`: Whether to enable TLS for ingress resources.
+
+For development environments, it's recommended to use the `staging` issuer to avoid hitting Let's Encrypt rate limits. For production environments, use the `production` issuer to get valid certificates.
+
+### Accessing Applications Securely
+
+When TLS is enabled, all applications with ingress resources can be accessed securely via HTTPS. The certificates are automatically provisioned and renewed by cert-manager.
+
 ## Accessing ArgoCD
 
 After deploying ArgoCD, you can access the web UI through the Ingress that was created:
@@ -144,6 +162,8 @@ After deploying ArgoCD, you can access the web UI through the Ingress that was c
 # Get the Ingress hostname
 kubectl get ingress -n argocd
 ```
+
+When TLS is enabled, you can access ArgoCD securely via HTTPS.
 
 The default username is `admin`. To get the initial password, run:
 
@@ -183,6 +203,8 @@ After deploying Grafana, you can access the web UI through the Ingress that was 
 # Get the Ingress hostname
 kubectl get ingress -n monitoring
 ```
+
+When TLS is enabled, you can access Grafana securely via HTTPS.
 
 Alternatively, you can use port-forwarding:
 

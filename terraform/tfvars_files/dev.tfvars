@@ -28,3 +28,8 @@ prometheus_replica_count = 1  # Using 1 replica for dev environment to save reso
 grafana_version       = "7.0.11"
 grafana_namespace     = "monitoring"
 grafana_replica_count = 1  # Using 1 replica for dev environment to save resources
+
+# Certificate configuration
+cert_manager_email      = "admin@example.com"
+cert_manager_issuer_type = "staging"  # Use staging for dev environment to avoid rate limits
+enable_tls              = true
