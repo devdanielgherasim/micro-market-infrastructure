@@ -192,6 +192,34 @@ resource "helm_release" "argocd" {
   ]
 }
 
+resource "kubernetes_manifest" "argocd_certificate" {
+  count = var.enable_tls ? 1 : 0
+
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "argocd-tls-cert"
+      namespace = var.argocd_namespace
+    }
+    spec = {
+      secretName = "argocd-tls"
+      issuerRef = {
+        name  = "${var.cert_manager_issuer_type}-letsencrypt"
+        kind  = "ClusterIssuer"
+      }
+      dnsNames = [
+        "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
+      ]
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.cluster_issuer,
+    helm_release.argocd
+  ]
+}
+
 resource "helm_release" "prometheus" {
   name             = "prometheus"
   repository       = "https://prometheus-community.github.io/helm-charts"
@@ -346,5 +374,33 @@ resource "helm_release" "grafana" {
     helm_release.nginx_ingress,
     helm_release.prometheus,
     kubernetes_manifest.cluster_issuer
+  ]
+}
+
+resource "kubernetes_manifest" "grafana_certificate" {
+  count = var.enable_tls ? 1 : 0
+
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "grafana-tls-cert"
+      namespace = var.grafana_namespace
+    }
+    spec = {
+      secretName = "grafana-tls"
+      issuerRef = {
+        name  = "${var.cert_manager_issuer_type}-letsencrypt"
+        kind  = "ClusterIssuer"
+      }
+      dnsNames = [
+        "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
+      ]
+    }
+  }
+
+  depends_on = [
+    kubernetes_manifest.cluster_issuer,
+    helm_release.grafana
   ]
 }
