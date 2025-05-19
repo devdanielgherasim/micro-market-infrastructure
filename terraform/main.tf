@@ -88,6 +88,38 @@ resource "helm_release" "cert_manager" {
   ]
 }
 
+resource "kubernetes_manifest" "cluster_issuer" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "ClusterIssuer"
+    metadata = {
+      name = "${var.cert_manager_issuer_type}-letsencrypt"
+    }
+    spec = {
+      acme = {
+        server = var.cert_manager_issuer_type == "staging" ? "https://acme-staging-v02.api.letsencrypt.org/directory" : "https://acme-v02.api.letsencrypt.org/directory"
+        email  = var.cert_manager_email
+        privateKeySecretRef = {
+          name = "${var.cert_manager_issuer_type}-letsencrypt-key"
+        }
+        solvers = [
+          {
+            http01 = {
+              ingress = {
+                class = "nginx"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.cert_manager
+  ]
+}
+
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -121,9 +153,25 @@ resource "helm_release" "argocd" {
     value = "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
   }
 
+  set {
+    name  = "server.ingress.tls"
+    value = var.enable_tls ? "[{\"hosts\":[\"argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io\"],\"secretName\":\"argocd-tls\"}]" : "[]"
+  }
+
+  set {
+    name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
+    value = var.enable_tls ? "${var.cert_manager_issuer_type}-letsencrypt" : ""
+  }
+
+  set {
+    name  = "server.ingress.annotations.kubernetes\\.io/tls-acme"
+    value = var.enable_tls ? "true" : "false"
+  }
+
   depends_on = [
     azurerm_kubernetes_cluster.k8s,
-    helm_release.nginx_ingress
+    helm_release.nginx_ingress,
+    kubernetes_manifest.cluster_issuer
   ]
 }
 
@@ -215,6 +263,26 @@ resource "helm_release" "grafana" {
   }
 
   set {
+    name  = "ingress.tls[0].hosts[0]"
+    value = var.enable_tls ? "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io" : ""
+  }
+
+  set {
+    name  = "ingress.tls[0].secretName"
+    value = var.enable_tls ? "grafana-tls" : ""
+  }
+
+  set {
+    name  = "ingress.annotations.cert-manager\\.io/cluster-issuer"
+    value = var.enable_tls ? "${var.cert_manager_issuer_type}-letsencrypt" : ""
+  }
+
+  set {
+    name  = "ingress.annotations.kubernetes\\.io/tls-acme"
+    value = var.enable_tls ? "true" : "false"
+  }
+
+  set {
     name  = "datasources.datasources\\.yaml.apiVersion"
     value = "1"
   }
@@ -247,6 +315,7 @@ resource "helm_release" "grafana" {
   depends_on = [
     azurerm_kubernetes_cluster.k8s,
     helm_release.nginx_ingress,
-    helm_release.prometheus
+    helm_release.prometheus,
+    kubernetes_manifest.cluster_issuer
   ]
 }

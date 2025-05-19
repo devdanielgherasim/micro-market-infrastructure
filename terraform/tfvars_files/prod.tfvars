@@ -28,3 +28,8 @@ prometheus_replica_count = 2  # Using 2 replicas for prod environment for high a
 grafana_version       = "7.0.11"
 grafana_namespace     = "monitoring"
 grafana_replica_count = 2  # Using 2 replicas for prod environment for high availability
+
+# Certificate configuration
+cert_manager_email      = "admin@example.com"
+cert_manager_issuer_type = "production"  # Use production for prod environment for valid certificates
+enable_tls              = true
