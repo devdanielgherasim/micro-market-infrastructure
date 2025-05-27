@@ -23,13 +23,10 @@ resource "azurerm_kubernetes_cluster" "this" {
   dns_prefix          = "k8s-${var.project_name}-${var.environment}"
   kubernetes_version  = var.kubernetes_version
   default_node_pool {
-    name                 = "default"
-    node_count           = var.node_count
-    vm_size              = var.aks_vm_size
-    auto_scaling_enabled = var.enable_auto_scaling
-    min_count            = var.enable_auto_scaling ? var.min_count : null
-    max_count            = var.enable_auto_scaling ? var.max_count : null
-    os_disk_size_gb      = 30
+    name            = "default"
+    node_count      = var.node_count
+    vm_size         = var.aks_vm_size
+    os_disk_size_gb = 30
   }
 
   identity {
