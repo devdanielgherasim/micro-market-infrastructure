@@ -24,12 +24,12 @@ resource "azurerm_kubernetes_cluster" "this" {
   kubernetes_version  = var.kubernetes_version
   node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
   default_node_pool {
-    name            = "default"
-    node_count      = var.node_count
-    vm_size         = var.aks_vm_size
-    os_disk_size_gb = 30
-    # node_public_ip_enabled      = true
+    name                        = "default"
+    node_count                  = var.node_count
+    vm_size                     = var.aks_vm_size
+    os_disk_size_gb             = 30
     node_public_ip_prefix_id    = azurerm_public_ip.this.public_ip_prefix_id
+    node_public_ip_enabled      = true
     temporary_name_for_rotation = "tempnode"
   }
 
