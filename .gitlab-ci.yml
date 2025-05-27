@@ -1,13 +1,15 @@
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
+# Multi-Stage GitLab CI/CD for Azure + Kubernetes Terraform
+# This pipeline ensures Azure infrastructure is deployed before Kubernetes addons.
+# It uses two separate Terraform projects and remote state for dependency management.
+
 stages:
   - validate
   - plan
   - apply
-  - cleanup
 
 variables:
-  TF_ROOT: terraform
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
@@ -16,82 +18,97 @@ variables:
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
-      - ${TF_ROOT}/.terraform
+      - azure/.terraform
+      - kubernetes/.terraform
       - .terraform.d/plugin-cache
     policy: pull-push
 
 .before_script_common: &before_script_common
   - echo "Starting job in $CI_JOB_STAGE stage"
-  - cd ${TF_ROOT}
   - export TF_VAR_client_id=$ARM_CLIENT_ID
   - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
   - export TF_VAR_tenant_id=$ARM_TENANT_ID
   - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
 
-validate:
+validate_azure:
   stage: validate
   <<: *terraform-cache
   before_script:
     - *before_script_common
+    - cd azure
   script:
     - terraform init -reconfigure
     - terraform validate
     - terraform fmt -check -diff
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
 
-plan:
+validate_kubernetes:
+  stage: validate
+  <<: *terraform-cache
+  before_script:
+    - *before_script_common
+    - cd kubernetes
+  script:
+    - terraform init -reconfigure
+    - terraform validate
+    - terraform fmt -check -diff
+  needs: [validate_azure]
+
+plan_azure:
   stage: plan
   <<: *terraform-cache
   before_script:
     - *before_script_common
+    - cd azure
   script:
     - terraform init
-    - terraform plan --var-file=tfvars_files/dev.tfvars -out=tfplan
+    - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json
   artifacts:
     paths:
-      - ${TF_ROOT}/tfplan
-      - ${TF_ROOT}/plan.json
+      - azure/tfplan
+      - azure/plan.json
     reports:
-      terraform: ${TF_ROOT}/plan.json
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "prod"'
+      terraform: azure/plan.json
 
-apply:
-  stage: apply
+plan_kubernetes:
+  stage: plan
   <<: *terraform-cache
   before_script:
     - *before_script_common
+    - cd kubernetes
   script:
     - terraform init
-    - terraform apply -auto-approve tfplan
-  dependencies:
-    - plan
-  needs: [ plan ]
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "prod"'
-      when: manual
-      allow_failure: false
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-      when: manual
-      allow_failure: true
-  environment:
-    name: $CI_COMMIT_BRANCH
-    deployment_tier: development
+    - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
+    - terraform show -json tfplan > plan.json
+  artifacts:
+    paths:
+      - kubernetes/tfplan
+      - kubernetes/plan.json
+    reports:
+      terraform: kubernetes/plan.json
+  needs: [plan_azure]
+# apply_azure:
+#   stage: apply
+#   <<: *terraform-cache
+#   before_script:
+#     - *before_script_common
+#     - cd azure
+#   script:
+#     - terraform init
+#     - terraform apply -auto-approve tfplan
+#   dependencies:
+#     - plan_azure
+#   needs: [plan_azure]
 
-cleanup:
-  stage: cleanup
-  <<: *terraform-cache
-  before_script:
-    - *before_script_common
-  script:
-    - terraform init
-    - terraform destroy -auto-approve --var-file=tfvars_files/dev.tfvars
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-      when: manual
-      allow_failure: true
-  environment:
-    name: $CI_COMMIT_BRANCH
-    action: stop
+# apply_kubernetes:
+#   stage: apply
+#   <<: *terraform-cache
+#   before_script:
+#     - *before_script_common
+#     - cd kubernetes
+#   script:
+#     - terraform init
+#     - terraform apply -auto-approve tfplan
+#   dependencies:
+#     - plan_kubernetes
+#   needs: [apply_azure]

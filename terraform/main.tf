@@ -67,11 +67,11 @@ module "dns" {
   a_records = {
     argocd = {
       ttl     = 300
-      records = ["192.0.2.1"]  # Placeholder IP, will be updated by external-dns or manually
+      records = ["192.0.2.1"] # Placeholder IP, will be updated by external-dns or manually
     },
     grafana = {
       ttl     = 300
-      records = ["192.0.2.1"]  # Placeholder IP, will be updated by external-dns or manually
+      records = ["192.0.2.1"] # Placeholder IP, will be updated by external-dns or manually
     }
   }
 
@@ -88,9 +88,9 @@ module "kubernetes_addons" {
   enable_tls    = var.enable_tls
 
   # NGINX Ingress Controller
-  install_nginx_ingress      = true
-  nginx_ingress_version      = var.nginx_ingress_version
-  nginx_ingress_namespace    = var.nginx_ingress_namespace
+  install_nginx_ingress       = true
+  nginx_ingress_version       = var.nginx_ingress_version
+  nginx_ingress_namespace     = var.nginx_ingress_namespace
   nginx_ingress_replica_count = var.nginx_ingress_replica_count
 
   # Cert Manager
