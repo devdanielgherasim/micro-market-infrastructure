@@ -1,47 +1,51 @@
-# Main Terraform configuration for Kubernetes Addons
-# This project provisions Kubernetes resources (NGINX, Cert Manager, ArgoCD, Prometheus, Grafana)
+terraform {
+  required_version = ">= 1.5.0"
 
-module "kubernetes_addons" {
-  source = "../modules/kubernetes_addons"
-  count  = var.create_kubernetes_resources ? 1 : 0
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=4.30.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">= 2.10.0, < 3.0.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = ">= 2.23.0, < 3.0.0"
+    }
+  }
+  backend "azurerm" {
+    resource_group_name  = "rg-infrastructure"
+    storage_account_name = "terraformmicrostate"
+    container_name       = "tfstate"
+    key                  = "terraform-kubernetes.tfstate"
+  }
+}
 
-  # General
-  dns_zone_name = var.dns_zone_name
-  enable_tls    = var.enable_tls
+provider "azurerm" {
+  features {}
 
-  # NGINX Ingress Controller
-  install_nginx_ingress       = true
-  nginx_ingress_version       = var.nginx_ingress_version
-  nginx_ingress_namespace     = var.nginx_ingress_namespace
-  nginx_ingress_replica_count = var.nginx_ingress_replica_count
+  client_id       = var.client_id
+  client_secret   = var.client_secret
+  tenant_id       = var.tenant_id
+  subscription_id = var.subscription_id
+}
 
-  # Cert Manager
-  install_cert_manager       = true
-  cert_manager_version       = var.cert_manager_version
-  cert_manager_namespace     = var.cert_manager_namespace
-  cert_manager_replica_count = var.cert_manager_replica_count
-  create_cluster_issuer      = true
-  cert_manager_issuer_type   = var.cert_manager_issuer_type
-  cert_manager_email         = var.cert_manager_email
+provider "kubernetes" {
+  host                   = data.terraform_remote_state.azure.outputs.kubernetes_host
+  client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
+  client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
+  cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_cluster_ca_certificate)
+}
 
-  # ArgoCD
-  install_argocd       = true
-  argocd_version       = var.argocd_version
-  argocd_namespace     = var.argocd_namespace
-  argocd_replica_count = var.argocd_replica_count
-
-  # Prometheus
-  install_prometheus       = true
-  prometheus_version       = var.prometheus_version
-  prometheus_namespace     = var.prometheus_namespace
-  prometheus_replica_count = var.prometheus_replica_count
-
-  # Grafana
-  install_grafana       = true
-  grafana_version       = var.grafana_version
-  grafana_namespace     = var.grafana_namespace
-  grafana_replica_count = var.grafana_replica_count
-
-  # You will need to provide kubeconfig and other outputs from the Azure project
-  # as input variables or via remote state/data sources.
+# Helm provider
+# This provider is configured to use the AKS cluster's credentials
+provider "helm" {
+  kubernetes {
+    host                   = data.terraform_remote_state.azure.outputs.kubernetes_host
+    client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
+    client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
+    cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_cluster_ca_certificate)
+  }
 }
