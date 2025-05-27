@@ -6,8 +6,8 @@ image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
 stages:
   - validate
-  - plan
-  - apply
+  - azure
+  - kubernetes
 
 variables:
   TF_IN_AUTOMATION: "true"
@@ -54,7 +54,7 @@ validate_kubernetes:
   needs: [validate_azure]
 
 plan_azure:
-  stage: plan
+  stage: azure
   <<: *terraform-cache
   before_script:
     - *before_script_common
@@ -69,9 +69,23 @@ plan_azure:
       - terraform/azure/plan.json
     reports:
       terraform: terraform/azure/plan.json
+  needs: [validate_azure]
+
+apply_azure:
+  stage: azure
+  <<: *terraform-cache
+  before_script:
+    - *before_script_common
+    - cd terraform/azure
+  script:
+    - terraform init
+    - terraform apply -auto-approve tfplan
+  dependencies:
+    - plan_azure
+  needs: [plan_azure]
 
 plan_kubernetes:
-  stage: plan
+  stage: kubernetes
   <<: *terraform-cache
   before_script:
     - *before_script_common
@@ -86,23 +100,10 @@ plan_kubernetes:
       - terraform/kubernetes/plan.json
     reports:
       terraform: terraform/kubernetes/plan.json
-  needs: [plan_azure]
-
-apply_azure:
-  stage: apply
-  <<: *terraform-cache
-  before_script:
-    - *before_script_common
-    - cd terraform/azure
-  script:
-    - terraform init
-    - terraform apply -auto-approve tfplan
-  dependencies:
-    - plan_azure
-  needs: [plan_azure]
+  needs: [validate_kubernetes, apply_azure]
 
 apply_kubernetes:
-  stage: apply
+  stage: kubernetes
   <<: *terraform-cache
   before_script:
     - *before_script_common
@@ -112,4 +113,4 @@ apply_kubernetes:
     - terraform apply -auto-approve tfplan
   dependencies:
     - plan_kubernetes
-  needs: [apply_azure]
+  needs: [plan_kubernetes]
