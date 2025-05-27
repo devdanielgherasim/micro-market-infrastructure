@@ -20,7 +20,6 @@ terraform {
     }
   }
   backend "azurerm" {
-    # These values should be provided via environment variables or command line arguments
     resource_group_name  = "rg-infrastructure"
     storage_account_name = "terraformmicrostate"
     container_name       = "tfstate"
@@ -28,26 +27,15 @@ terraform {
   }
 }
 
-provider "azurerm" {
-  features {}
-
-  client_id       = var.client_id
-  client_secret   = var.client_secret
-  tenant_id       = var.tenant_id
-  subscription_id = var.subscription_id
-}
-
 provider "kubernetes" {
-  host = module.kubernetes.host
-
-  client_certificate     = base64decode(module.kubernetes.client_certificate)
-  client_key             = base64decode(module.kubernetes.client_key)
-  cluster_ca_certificate = base64decode(module.kubernetes.cluster_ca_certificate)
+  host                   = data.terraform_remote_state.azure.outputs.kubeconfig["host"]
+  client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["client_certificate"])
+  client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["client_key"])
+  cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["cluster_ca_certificate"])
 
   # This ensures the provider doesn't fail during plan phase
   # when the cluster doesn't exist yet
   dynamic "exec" {
-    for_each = var.create_kubernetes_resources ? [] : [1]
     content {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "echo"
@@ -60,16 +48,14 @@ provider "kubernetes" {
 # This provider is configured to use the AKS cluster's credentials
 provider "helm" {
   kubernetes {
-    host = module.kubernetes.host
-
-    client_certificate     = base64decode(module.kubernetes.client_certificate)
-    client_key             = base64decode(module.kubernetes.client_key)
-    cluster_ca_certificate = base64decode(module.kubernetes.cluster_ca_certificate)
+    host                   = data.terraform_remote_state.azure.outputs.kubeconfig["host"]
+    client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["client_certificate"])
+    client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["client_key"])
+    cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubeconfig["cluster_ca_certificate"])
 
     # This ensures the provider doesn't fail during plan phase
     # when the cluster doesn't exist yet
     dynamic "exec" {
-      for_each = var.create_kubernetes_resources ? [] : [1]
       content {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "echo"
