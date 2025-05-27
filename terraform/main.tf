@@ -1,406 +1,135 @@
-resource "azurerm_resource_group" "rg" {
+# Main Terraform configuration file
+# This file defines the root module that uses the child modules
+
+# Resource Group for main resources
+module "resource_group" {
+  source = "./modules/resource_group"
+
   name     = "rg-${var.project_name}-${var.environment}"
   location = var.location
+  tags     = local.tags
 }
 
-resource "azurerm_container_registry" "acr" {
+# Azure Container Registry
+module "container_registry" {
+  source = "./modules/container_registry"
 
   name                = "acr${var.project_name}${var.environment}"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
   sku                 = var.acr_sku_name
   admin_enabled       = true
+  tags                = local.tags
 }
 
-resource "azurerm_kubernetes_cluster" "k8s" {
+# Azure Kubernetes Service
+module "kubernetes" {
+  source = "./modules/kubernetes"
+
   name                = "k8s-${var.project_name}-${var.environment}"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
   dns_prefix          = "k8s-${var.project_name}-${var.environment}"
+  kubernetes_version  = var.kubernetes_version
 
-  default_node_pool {
-    name       = "default"
-    node_count = 1
-    vm_size    = var.aks_vm_size
-  }
+  default_node_pool_name = "default"
+  node_count             = var.environment == "prod" ? 2 : 1
+  vm_size                = var.aks_vm_size
+  enable_auto_scaling    = var.environment == "prod" ? true : false
+  min_count              = var.environment == "prod" ? 2 : null
+  max_count              = var.environment == "prod" ? 5 : null
+  os_disk_size_gb        = 30
 
-  identity {
-    type = "SystemAssigned"
-  }
+  tags = local.tags
 }
 
-resource "azurerm_role_assignment" "ra_acr_k8s" {
-  principal_id                     = azurerm_kubernetes_cluster.k8s.identity[0].principal_id
+# Role assignment for AKS to pull images from ACR
+module "acr_role_assignment" {
+  source = "./modules/role_assignment"
+  count  = var.create_acr_role_assignment ? 1 : 0
+
+  principal_id                     = module.kubernetes.identity[0].principal_id
   role_definition_name             = "AcrPull"
-  scope                            = azurerm_container_registry.acr.id
+  scope                            = module.container_registry.id
   skip_service_principal_aad_check = true
 }
 
-resource "helm_release" "nginx_ingress" {
-  name             = "nginx-ingress"
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  version          = var.nginx_ingress_version
-  namespace        = var.nginx_ingress_namespace
-  create_namespace = true
+# DNS Zone and records
+module "dns" {
+  source = "./modules/dns"
+  count  = var.create_dns_zone ? 1 : 0
 
-  set {
-    name  = "controller.service.type"
-    value = "LoadBalancer"
+  create_resource_group = true
+  resource_group_name   = "dnszone-${var.project_name}-${var.environment}"
+  location              = var.location
+  zone_name             = var.dns_zone_name
+
+  a_records = {
+    argocd = {
+      ttl     = 300
+      records = ["192.0.2.1"]  # Placeholder IP, will be updated by external-dns or manually
+    },
+    grafana = {
+      ttl     = 300
+      records = ["192.0.2.1"]  # Placeholder IP, will be updated by external-dns or manually
+    }
   }
 
-  set {
-    name  = "controller.replicaCount"
-    value = var.nginx_ingress_replica_count
-  }
+  tags = local.tags
+}
+
+# Kubernetes Addons (NGINX Ingress, Cert Manager, ArgoCD, Prometheus, Grafana)
+module "kubernetes_addons" {
+  source = "./modules/kubernetes_addons"
+  count  = var.create_kubernetes_resources ? 1 : 0
+
+  # General
+  dns_zone_name = var.dns_zone_name
+  enable_tls    = var.enable_tls
+
+  # NGINX Ingress Controller
+  install_nginx_ingress      = true
+  nginx_ingress_version      = var.nginx_ingress_version
+  nginx_ingress_namespace    = var.nginx_ingress_namespace
+  nginx_ingress_replica_count = var.nginx_ingress_replica_count
+
+  # Cert Manager
+  install_cert_manager       = true
+  cert_manager_version       = var.cert_manager_version
+  cert_manager_namespace     = var.cert_manager_namespace
+  cert_manager_replica_count = var.cert_manager_replica_count
+  create_cluster_issuer      = true
+  cert_manager_issuer_type   = var.cert_manager_issuer_type
+  cert_manager_email         = var.cert_manager_email
+
+  # ArgoCD
+  install_argocd       = true
+  argocd_version       = var.argocd_version
+  argocd_namespace     = var.argocd_namespace
+  argocd_replica_count = var.argocd_replica_count
+
+  # Prometheus
+  install_prometheus       = true
+  prometheus_version       = var.prometheus_version
+  prometheus_namespace     = var.prometheus_namespace
+  prometheus_replica_count = var.prometheus_replica_count
+
+  # Grafana
+  install_grafana       = true
+  grafana_version       = var.grafana_version
+  grafana_namespace     = var.grafana_namespace
+  grafana_replica_count = var.grafana_replica_count
 
   depends_on = [
-    azurerm_kubernetes_cluster.k8s
+    module.kubernetes
   ]
 }
 
-resource "helm_release" "cert_manager" {
-  name             = "cert-manager"
-  repository       = "https://charts.jetstack.io"
-  chart            = "cert-manager"
-  version          = var.cert_manager_version
-  namespace        = var.cert_manager_namespace
-  create_namespace = true
-
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
-
-  set {
-    name  = "replicaCount"
-    value = var.cert_manager_replica_count
-  }
-
-  set {
-    name  = "prometheus.enabled"
-    value = "false"
-  }
-
-  depends_on = [
-    azurerm_kubernetes_cluster.k8s,
-    helm_release.nginx_ingress
-  ]
-}
-
-resource "kubernetes_manifest" "cluster_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = "${var.cert_manager_issuer_type}-letsencrypt"
-    }
-    spec = {
-      acme = {
-        server = var.cert_manager_issuer_type == "staging" ? "https://acme-staging-v02.api.letsencrypt.org/directory" : "https://acme-v02.api.letsencrypt.org/directory"
-        email  = var.cert_manager_email
-        privateKeySecretRef = {
-          name = "${var.cert_manager_issuer_type}-letsencrypt-key"
-        }
-        solvers = [
-          {
-            http01 = {
-              ingress = {
-                class = "nginx"
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-
-  depends_on = [
-    helm_release.cert_manager
-  ]
-}
-
-resource "helm_release" "argocd" {
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  version          = var.argocd_version
-  namespace        = var.argocd_namespace
-  create_namespace = true
-
-  set {
-    name  = "server.replicas"
-    value = var.argocd_replica_count
-  }
-
-  set {
-    name  = "server.service.type"
-    value = "ClusterIP"
-  }
-
-  set {
-    name  = "server.ingress.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "server.ingress.ingressClassName"
-    value = "nginx"
-  }
-
-  set {
-    name  = "server.ingress.hosts[0]"
-    value = "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "server.ingress.tls[0].hosts[0]"
-      value = "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "server.ingress.tls[0].secretName"
-      value = "argocd-tls"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
-      value = "${var.cert_manager_issuer_type}-letsencrypt"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "server.ingress.annotations.kubernetes\\.io/tls-acme"
-      value = "true"
-    }
-  }
-
-  depends_on = [
-    azurerm_kubernetes_cluster.k8s,
-    helm_release.nginx_ingress,
-    kubernetes_manifest.cluster_issuer
-  ]
-}
-
-resource "kubernetes_manifest" "argocd_certificate" {
-  count = var.enable_tls ? 1 : 0
-
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "argocd-tls-cert"
-      namespace = var.argocd_namespace
-    }
-    spec = {
-      secretName = "argocd-tls"
-      issuerRef = {
-        name  = "${var.cert_manager_issuer_type}-letsencrypt"
-        kind  = "ClusterIssuer"
-      }
-      dnsNames = [
-        "argocd.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-      ]
-    }
-  }
-
-  depends_on = [
-    kubernetes_manifest.cluster_issuer,
-    helm_release.argocd
-  ]
-}
-
-resource "helm_release" "prometheus" {
-  name             = "prometheus"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "prometheus"
-  version          = var.prometheus_version
-  namespace        = var.prometheus_namespace
-  create_namespace = true
-
-  set {
-    name  = "server.replicaCount"
-    value = var.prometheus_replica_count
-  }
-
-  set {
-    name  = "server.persistentVolume.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "server.persistentVolume.size"
-    value = "8Gi"
-  }
-
-  set {
-    name  = "alertmanager.persistentVolume.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "alertmanager.persistentVolume.size"
-    value = "2Gi"
-  }
-
-  set {
-    name  = "alertmanager.replicaCount"
-    value = var.prometheus_replica_count
-  }
-
-  depends_on = [
-    azurerm_kubernetes_cluster.k8s,
-    helm_release.nginx_ingress
-  ]
-}
-
-resource "helm_release" "grafana" {
-  name             = "grafana"
-  repository       = "https://grafana.github.io/helm-charts"
-  chart            = "grafana"
-  version          = var.grafana_version
-  namespace        = var.grafana_namespace
-  create_namespace = true
-
-  set {
-    name  = "replicas"
-    value = var.grafana_replica_count
-  }
-
-  set {
-    name  = "persistence.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "persistence.size"
-    value = "5Gi"
-  }
-
-  set {
-    name  = "service.type"
-    value = "ClusterIP"
-  }
-
-  set {
-    name  = "ingress.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "ingress.ingressClassName"
-    value = "nginx"
-  }
-
-  set {
-    name  = "ingress.hosts[0]"
-    value = "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "ingress.tls[0].hosts[0]"
-      value = "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "ingress.tls[0].secretName"
-      value = "grafana-tls"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "ingress.annotations.cert-manager\\.io/cluster-issuer"
-      value = "${var.cert_manager_issuer_type}-letsencrypt"
-    }
-  }
-
-  dynamic "set" {
-    for_each = var.enable_tls ? [1] : []
-    content {
-      name  = "ingress.annotations.kubernetes\\.io/tls-acme"
-      value = "true"
-    }
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.apiVersion"
-    value = "1"
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.datasources[0].name"
-    value = "Prometheus"
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.datasources[0].type"
-    value = "prometheus"
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.datasources[0].url"
-    value = "http://prometheus-server.${var.prometheus_namespace}.svc.cluster.local"
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.datasources[0].access"
-    value = "proxy"
-  }
-
-  set {
-    name  = "datasources.datasources\\.yaml.datasources[0].isDefault"
-    value = "true"
-  }
-
-  depends_on = [
-    azurerm_kubernetes_cluster.k8s,
-    helm_release.nginx_ingress,
-    helm_release.prometheus,
-    kubernetes_manifest.cluster_issuer
-  ]
-}
-
-resource "kubernetes_manifest" "grafana_certificate" {
-  count = var.enable_tls ? 1 : 0
-
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "grafana-tls-cert"
-      namespace = var.grafana_namespace
-    }
-    spec = {
-      secretName = "grafana-tls"
-      issuerRef = {
-        name  = "${var.cert_manager_issuer_type}-letsencrypt"
-        kind  = "ClusterIssuer"
-      }
-      dnsNames = [
-        "grafana.${azurerm_kubernetes_cluster.k8s.name}.${var.location}.azmk8s.io"
-      ]
-    }
-  }
-
-  depends_on = [
-    kubernetes_manifest.cluster_issuer,
-    helm_release.grafana
-  ]
+# Define local values
+locals {
+  tags = merge(var.tags, {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  })
 }

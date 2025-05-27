@@ -2,7 +2,17 @@ location     = "westeurope"
 project_name = "microservices1691715"
 environment  = "dev"
 acr_sku_name = "Basic"
-aks_vm_size  = "Standard_A2_v2"
+aks_vm_size = "Standard_A2_v2"
+create_acr_role_assignment = true
+
+# Resource tags
+tags = {
+  ManagedBy   = "Terraform"
+  Environment = "Development"
+  Project     = "Microservices"
+  Owner       = "DevOps"
+  CostCenter  = "IT-123"
+}
 
 # NGINX Ingress Controller configuration
 nginx_ingress_version       = "4.7.1"
@@ -30,6 +40,10 @@ grafana_namespace     = "monitoring"
 grafana_replica_count = 1  # Using 1 replica for dev environment to save resources
 
 # Certificate configuration
-cert_manager_email      = "admin@example.com"
+cert_manager_email = "devops@microservices1691715.com"  # Use a realistic email address
 cert_manager_issuer_type = "staging"  # Use staging for dev environment to avoid rate limits
-enable_tls              = true
+enable_tls = true
+
+# DNS configuration
+dns_zone_name = "dev.microservices1691715.com"  # Use a subdomain for dev environment
+create_dns_zone = true
