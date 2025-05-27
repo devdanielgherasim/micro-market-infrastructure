@@ -22,6 +22,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   resource_group_name = azurerm_resource_group.this.name
   dns_prefix          = "k8s-${var.project_name}-${var.environment}"
   kubernetes_version  = var.kubernetes_version
+  node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
   default_node_pool {
     name            = "default"
     node_count      = var.node_count
@@ -32,8 +33,8 @@ resource "azurerm_kubernetes_cluster" "this" {
   identity {
     type = "SystemAssigned"
   }
-
-  tags = var.tags
+  tags       = var.tags
+  depends_on = [azurerm_container_registry.this]
 }
 
 resource "azurerm_role_assignment" "this" {
