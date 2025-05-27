@@ -28,6 +28,9 @@ resource "azurerm_kubernetes_cluster" "this" {
     node_count      = var.node_count
     vm_size         = var.aks_vm_size
     os_disk_size_gb = 30
+    # node_public_ip_enabled      = true
+    node_public_ip_prefix_id    = azurerm_public_ip.this.public_ip_prefix_id
+    temporary_name_for_rotation = "tempnode"
   }
 
   identity {
@@ -35,6 +38,14 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
   tags       = var.tags
   depends_on = [azurerm_container_registry.this]
+}
+
+resource "azurerm_public_ip" "this" {
+  allocation_method   = "Static"
+  location            = azurerm_resource_group.this.location
+  name                = "public-ip-${var.project_name}-${var.environment}-aks"
+  resource_group_name = azurerm_resource_group.this.name
+  domain_name_label   = var.project_name
 }
 
 resource "azurerm_role_assignment" "this" {
