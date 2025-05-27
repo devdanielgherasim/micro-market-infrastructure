@@ -1,8 +1,18 @@
 location     = "westeurope"
 project_name = "microservices1691715"
 environment  = "prod"
-acr_sku_name = "Basic"
-aks_vm_size  = "Standard_A2_v2"
+acr_sku_name = "Standard"  # Using Standard SKU for production for better performance
+aks_vm_size  = "Standard_D2s_v3"  # Using a more powerful VM size for production
+create_acr_role_assignment = true
+
+# Resource tags
+tags = {
+  ManagedBy   = "Terraform"
+  Environment = "Production"
+  Project     = "Microservices"
+  Owner       = "DevOps"
+  CostCenter  = "IT-123"
+}
 
 # NGINX Ingress Controller configuration
 nginx_ingress_version       = "4.7.1"
@@ -30,6 +40,10 @@ grafana_namespace     = "monitoring"
 grafana_replica_count = 2  # Using 2 replicas for prod environment for high availability
 
 # Certificate configuration
-cert_manager_email      = "admin@example.com"
+cert_manager_email = "devops@microservices1691715.com"  # Use a realistic email address
 cert_manager_issuer_type = "production"  # Use production for prod environment for valid certificates
-enable_tls              = true
+enable_tls = true
+
+# DNS configuration
+dns_zone_name   = "microservices1691715.com"
+create_dns_zone = true
