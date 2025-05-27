@@ -69,7 +69,6 @@ plan_azure:
       - terraform/azure/plan.json
     reports:
       terraform: terraform/azure/plan.json
-  needs: [validate_azure]
 
 apply_azure:
   stage: azure
