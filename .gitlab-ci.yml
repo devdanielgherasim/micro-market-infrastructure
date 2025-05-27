@@ -18,8 +18,8 @@ variables:
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
-      - azure/.terraform
-      - kubernetes/.terraform
+      - terraform/azure/.terraform
+      - terraform/kubernetes/.terraform
       - .terraform.d/plugin-cache
     policy: pull-push
 
@@ -35,7 +35,7 @@ validate_azure:
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd azure
+    - cd terraform/azure
   script:
     - terraform init -reconfigure
     - terraform validate
@@ -46,7 +46,7 @@ validate_kubernetes:
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd kubernetes
+    - cd terraform/kubernetes
   script:
     - terraform init -reconfigure
     - terraform validate
@@ -58,57 +58,58 @@ plan_azure:
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd azure
+    - cd terraform/azure
   script:
     - terraform init
     - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json
   artifacts:
     paths:
-      - azure/tfplan
-      - azure/plan.json
+      - terraform/azure/tfplan
+      - terraform/azure/plan.json
     reports:
-      terraform: azure/plan.json
+      terraform: terraform/azure/plan.json
 
 plan_kubernetes:
   stage: plan
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd kubernetes
+    - cd terraform/kubernetes
   script:
     - terraform init
     - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json
   artifacts:
     paths:
-      - kubernetes/tfplan
-      - kubernetes/plan.json
+      - terraform/kubernetes/tfplan
+      - terraform/kubernetes/plan.json
     reports:
-      terraform: kubernetes/plan.json
+      terraform: terraform/kubernetes/plan.json
   needs: [plan_azure]
-# apply_azure:
-#   stage: apply
-#   <<: *terraform-cache
-#   before_script:
-#     - *before_script_common
-#     - cd azure
-#   script:
-#     - terraform init
-#     - terraform apply -auto-approve tfplan
-#   dependencies:
-#     - plan_azure
-#   needs: [plan_azure]
 
-# apply_kubernetes:
-#   stage: apply
-#   <<: *terraform-cache
-#   before_script:
-#     - *before_script_common
-#     - cd kubernetes
-#   script:
-#     - terraform init
-#     - terraform apply -auto-approve tfplan
-#   dependencies:
-#     - plan_kubernetes
-#   needs: [apply_azure]
+apply_azure:
+  stage: apply
+  <<: *terraform-cache
+  before_script:
+    - *before_script_common
+    - cd terraform/azure
+  script:
+    - terraform init
+    - terraform apply -auto-approve tfplan
+  dependencies:
+    - plan_azure
+  needs: [plan_azure]
+
+apply_kubernetes:
+  stage: apply
+  <<: *terraform-cache
+  before_script:
+    - *before_script_common
+    - cd terraform/kubernetes
+  script:
+    - terraform init
+    - terraform apply -auto-approve tfplan
+  dependencies:
+    - plan_kubernetes
+  needs: [apply_azure]
