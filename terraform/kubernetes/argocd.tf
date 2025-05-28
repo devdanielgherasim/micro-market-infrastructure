@@ -2,26 +2,18 @@ resource "kubernetes_namespace_v1" "argocd" {
   metadata {
     name = "argocd"
   }
-
 }
 
 resource "helm_release" "argocd" {
-  count = var.install_argocd ? 1 : 0
-
-  name       = "argocd"
+  name       = "argocd-${var.environment}"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argo-cd"
-  version    = var.argocd_version
+  version    = "8.0.10"
   namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
 
   set {
     name  = "server.replicas"
-    value = var.argocd_replica_count
-  }
-
-  set {
-    name  = "server.service.type"
-    value = "ClusterIP"
+    value = "1"
   }
 
   set {
@@ -51,7 +43,7 @@ resource "helm_release" "argocd" {
 
   set {
     name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
-    value = "${var.cert_manager_issuer_type}-letsencrypt"
+    value = "letsencrypt-production-cluster-issuer"
   }
 
   set {

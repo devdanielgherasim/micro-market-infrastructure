@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = "=1.13.0"
 
   required_providers {
     azurerm = {
@@ -8,11 +8,11 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = ">= 2.10.0, < 3.0.0"
+      version = "=2.17.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = ">= 2.23.0, < 3.0.0"
+      version = "=2.37.1"
     }
   }
   backend "azurerm" {
@@ -33,19 +33,18 @@ provider "azurerm" {
 }
 
 provider "kubernetes" {
-  host                   = data.terraform_remote_state.azure.outputs.kubernetes_host
-  client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
-  client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
+  host = data.terraform_remote_state.azure.outputs.kubernetes_host
+  client_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
+  client_key = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
   cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_cluster_ca_certificate)
 }
 
-# Helm provider
-# This provider is configured to use the AKS cluster's credentials
 provider "helm" {
   kubernetes {
-    host                   = data.terraform_remote_state.azure.outputs.kubernetes_host
-    client_certificate     = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
-    client_key             = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
+    host = data.terraform_remote_state.azure.outputs.kubernetes_host
+    client_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_certificate)
+    client_key = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_client_key)
     cluster_ca_certificate = base64decode(data.terraform_remote_state.azure.outputs.kubernetes_cluster_ca_certificate)
   }
 }
+

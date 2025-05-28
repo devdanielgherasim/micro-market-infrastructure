@@ -1,9 +1,16 @@
+resource "kubernetes_namespace_v1" "nginx" {
+  metadata {
+    name = "nginx"
+  }
+}
+
 resource "helm_release" "nginx-ingress" {
-  name       = "nginx-ingress"
+  name       = "nginx-ingress-${var.environment}"
   repository = "https://kubernetes.github.io/ingress-nginx"
   namespace  = kubernetes_namespace_v1.nginx.metadata[0].name
   chart      = "ingress-nginx"
   version    = "4.12.2"
+
   set {
     name  = "controller.admissionWebhooks.certManager.enabled"
     value = "true"
@@ -31,16 +38,8 @@ resource "helm_release" "nginx-ingress" {
   depends_on = [helm_release.cert_manager]
 }
 
-resource "kubernetes_namespace_v1" "nginx" {
-  metadata {
-    name = "nginx"
-  }
-
-}
-
-# Cert Manager
 resource "helm_release" "cert_manager" {
-  name             = "cert-manager"
+  name             = "cert-manager-${var.environment}"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
   version          = "v1.17.2"
@@ -53,9 +52,9 @@ resource "helm_release" "cert_manager" {
   }
 }
 
-resource "kubernetes_ingress_v1" "ignis_ingress_grafana" {
+resource "kubernetes_ingress_v1" "ingress_grafana" {
   metadata {
-    name      = "ignis-grafana-ingress"
+    name      = "grafana-ingress"
     namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
     annotations = {
       "cert-manager.io/cluster-issuer"              = "letsencrypt-production-cluster-issuer"
@@ -68,7 +67,7 @@ resource "kubernetes_ingress_v1" "ignis_ingress_grafana" {
 
   spec {
     tls {
-      hosts       = [data.azurerm_public_ip.aks_public_ip.fqdn]
+      hosts = [data.azurerm_public_ip.aks_public_ip.fqdn]
       secret_name = "tls-secret-monitoring"
     }
 
