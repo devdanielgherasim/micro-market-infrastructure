@@ -9,6 +9,6 @@ data "terraform_remote_state" "azure" {
 }
 
 data "azurerm_public_ip" "aks_public_ip" {
-  name                = "public-ip-${var.project_name}-${var.environment}-aks"
-  resource_group_name = "rg-microservices1691715-dev"
+  name                = "aks-lb-ip-${var.project_name}-${var.environment}"
+  resource_group_name = "rg-${var.project_name}-${var.environment}"
 }

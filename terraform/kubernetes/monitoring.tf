@@ -7,7 +7,7 @@ resource "kubernetes_namespace_v1" "monitoring" {
 resource "helm_release" "kube-prometheus" {
   name       = "kube-prometheus-stack"
   namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
-  version    = "62.2.1"
+  version    = "72.6.3"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
   set {

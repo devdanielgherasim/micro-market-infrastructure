@@ -1,8 +1,5 @@
-# Providers configuration
-# This file defines the providers and backend configuration
-
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = "=1.13.0"
 
   required_providers {
     azurerm = {
@@ -11,32 +8,26 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      version = ">= 2.10.0, < 3.0.0"
+      version = "=2.17.0"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = ">= 2.23.0, < 3.0.0"
+      version = "=2.37.1"
     }
     time = {
       source  = "hashicorp/time"
-      version = ">= 0.9.0, < 1.0.0"
+      version = "=0.13.1"
     }
   }
 
-  # Backend configuration
-  # This is commented out to allow for local development
-  # Uncomment and configure for production use
   backend "azurerm" {
-    # These values should be provided via environment variables or command line arguments
     resource_group_name  = "rg-infrastructure"
     storage_account_name = "terraformmicrostate"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
   }
-
 }
 
-# Azure Resource Manager provider
 provider "azurerm" {
   features {}
 
@@ -45,4 +36,3 @@ provider "azurerm" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 }
-
