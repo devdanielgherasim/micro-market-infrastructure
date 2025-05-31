@@ -28,14 +28,13 @@ resource "helm_release" "argocd" {
 
   set {
     name  = "server.ingress.hosts[0]"
-    value = data.azurerm_public_ip.aks_public_ip.fqdn
+    value = "${var.project_name}.westeurope.cloudapp.azure.com"
   }
 
   set {
     name  = "server.ingress.tls[0].hosts[0]"
-    value = data.azurerm_public_ip.aks_public_ip.fqdn
+    value = "${var.project_name}.westeurope.cloudapp.azure.com"
   }
-
   set {
     name  = "server.ingress.tls[0].secretName"
     value = "argocd-tls"
@@ -43,7 +42,7 @@ resource "helm_release" "argocd" {
 
   set {
     name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
-    value = "letsencrypt-production-cluster-issuer"
+    value = var.cluster_issuer
   }
 
   set {
