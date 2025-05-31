@@ -1,52 +1,114 @@
+locals {
+  argocd_domain = "${var.project_name}.westeurope.cloudapp.azure.com"
+}
+
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
     name = "argocd"
+    labels = {
+      "app.kubernetes.io/managed-by" = "terraform"
+      "environment"                  = var.environment
+      "app.kubernetes.io/part-of"    = "argocd"
+    }
   }
 }
 
 resource "helm_release" "argocd" {
-  name       = "argocd-${var.environment}"
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argo-cd"
-  version    = "8.0.10"
-  namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
+  name             = "argocd-${var.environment}"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "8.0.10"
+  namespace        = kubernetes_namespace_v1.argocd.metadata[0].name
+  depends_on = [helm_release.cert_manager]
+  create_namespace = false
 
-  set {
-    name  = "server.replicas"
-    value = "1"
-  }
+  values = [
+    yamlencode({
+      global = {
+        domain = local.argocd_domain
+      }
 
-  set {
-    name  = "server.ingress.enabled"
-    value = "true"
-  }
+      server = {
+        extraArgs = [
+          "--insecure",
+        ]
 
-  set {
-    name  = "server.ingress.ingressClassName"
-    value = "nginx"
-  }
+        replicas = 1
 
-  set {
-    name  = "server.ingress.hosts[0]"
-    value = "${var.project_name}.westeurope.cloudapp.azure.com"
-  }
+        ingress = {
+          enabled          = true
+          ingressClassName = "nginx"
+          hosts = [local.argocd_domain]
+          paths = ["/"]
+          pathType         = "Prefix"
 
-  set {
-    name  = "server.ingress.tls[0].hosts[0]"
-    value = "${var.project_name}.westeurope.cloudapp.azure.com"
-  }
-  set {
-    name  = "server.ingress.tls[0].secretName"
-    value = "argocd-tls"
-  }
+          tls = [
+            {
+              hosts = [local.argocd_domain]
+              secretName = "argocd-server-tls"
+            }
+          ]
 
-  set {
-    name  = "server.ingress.annotations.cert-manager\\.io/cluster-issuer"
-    value = var.cluster_issuer
-  }
+          annotations = {
+            "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
+            "kubernetes.io/tls-acme"                         = "true"
+            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
+            "nginx.ingress.kubernetes.io/ssl-passthrough"    = "false"
+            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
+          }
+        }
 
-  set {
-    name  = "server.ingress.annotations.kubernetes\\.io/tls-acme"
-    value = "true"
-  }
+        config = {
+          "application.instanceLabelKey" = "argocd.argoproj.io/instance"
+          "admin.enabled"                = "true"
+
+          "server.insecure" = "true"
+        }
+
+        service = {
+          type       = "ClusterIP"
+          port       = 80
+          targetPort = 8080
+        }
+      }
+
+      redis = {
+        enabled = true
+      }
+
+      repoServer = {
+        replicas = 1
+      }
+
+      controller = {
+        replicas = 1
+      }
+
+      applicationSet = {
+        enabled  = true
+        replicas = 1
+      }
+
+      configs = {
+        tls = {
+          server = {
+            enabled = false
+          }
+        }
+
+        cm = {
+          "server.insecure" = "true"
+        }
+      }
+
+      rbac = {
+        create     = true
+        pspEnabled = false
+      }
+
+      ha = {
+        enabled = false
+      }
+    })
+  ]
 }
