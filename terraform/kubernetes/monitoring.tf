@@ -4,34 +4,32 @@ resource "kubernetes_namespace_v1" "monitoring" {
   }
 }
 
+resource "random_password" "grafana_password" {
+  length = 16
+}
+
 resource "helm_release" "kube-prometheus" {
   name       = "kube-prometheus-stack"
   namespace  = kubernetes_namespace_v1.monitoring.metadata[0].name
   version    = "72.6.3"
   repository = "https://prometheus-community.github.io/helm-charts"
   chart      = "kube-prometheus-stack"
-  set {
-    name  = "grafana.assertNoLeakedSecrets"
-    value = false
-  }
-  set {
-    name  = "grafana.adminPassword"
-    value = random_password.grafana_password.result
-  }
-  set {
-    name  = "grafana.grafana\\.ini.server.domain"
-    value = "${var.project_name}.westeurope.cloudapp.azure.com"
-  }
-  set {
-    name  = "grafana.grafana\\.ini.server.root_url"
-    value = "${var.project_name}.westeurope.cloudapp.azure.com/grafana"
-  }
-  set {
-    name  = "grafana.grafana\\.ini.server.serve_from_sub_path"
-    value = "true"
-  }
-}
+  depends_on = [helm_release.nginx-ingress, helm_release.cert_manager]
 
-resource "random_password" "grafana_password" {
-  length = 16
+  values = [
+    <<-EOT
+    grafana:
+      assertNoLeakedSecrets: false
+      adminPassword: "${random_password.grafana_password.result}"
+      grafana.ini:
+        server:
+          domain: "${var.project_name}.westeurope.cloudapp.azure.com"
+          root_url: "https://${var.project_name}.westeurope.cloudapp.azure.com/grafana"
+          serve_from_sub_path: true
+      ingress:
+        enabled: false
+      serviceMonitor:
+        enabled: true
+    EOT
+  ]
 }
