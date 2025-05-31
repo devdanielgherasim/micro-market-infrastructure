@@ -26,3 +26,8 @@ variable "environment" {
   type    = string
   default = "dev"
 }
+
+variable "cluster_issuer" {
+  type    = string
+  default = "letsencrypt-production-cluster-issuer"
+}

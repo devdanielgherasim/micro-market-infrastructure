@@ -57,7 +57,7 @@ resource "kubernetes_ingress_v1" "ingress_grafana" {
     name      = "grafana-ingress"
     namespace = kubernetes_namespace_v1.monitoring.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"              = "letsencrypt-production-cluster-issuer"
+      "cert-manager.io/cluster-issuer"              = var.cluster_issuer
       "kubernetes.io/ingress.class"                 = "nginx"
       "nginx.ingress.kubernetes.io/use-regex"       = "true"
       "nginx.ingress.kubernetes.io/proxy-body-size" = "20m"
@@ -67,12 +67,12 @@ resource "kubernetes_ingress_v1" "ingress_grafana" {
 
   spec {
     tls {
-      hosts = [data.azurerm_public_ip.aks_public_ip.fqdn]
+      hosts = ["${var.project_name}.westeurope.cloudapp.azure.com"]
       secret_name = "tls-secret-monitoring"
     }
 
     rule {
-      host = data.azurerm_public_ip.aks_public_ip.fqdn
+      host = "${var.project_name}.westeurope.cloudapp.azure.com"
       http {
         path {
           path_type = "Prefix"

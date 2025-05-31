@@ -20,11 +20,11 @@ resource "helm_release" "kube-prometheus" {
   }
   set {
     name  = "grafana.grafana\\.ini.server.domain"
-    value = data.azurerm_public_ip.aks_public_ip.fqdn
+    value = "${var.project_name}.westeurope.cloudapp.azure.com"
   }
   set {
     name  = "grafana.grafana\\.ini.server.root_url"
-    value = "${data.azurerm_public_ip.aks_public_ip.fqdn}/grafana"
+    value = "${var.project_name}.westeurope.cloudapp.azure.com/grafana"
   }
   set {
     name  = "grafana.grafana\\.ini.server.serve_from_sub_path"
