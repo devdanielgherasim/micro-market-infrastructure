@@ -8,7 +8,6 @@ resource "kubernetes_namespace_v1" "nginx" {
   }
 }
 
-
 resource "helm_release" "cert_manager" {
   name             = "cert-manager-${var.environment}"
   repository       = "https://charts.jetstack.io"
@@ -21,6 +20,57 @@ resource "helm_release" "cert_manager" {
     name  = "installCRDs"
     value = "true"
   }
+
+  set {
+    name  = "webhook.securePort"
+    value = "10250"
+  }
+
+  set {
+    name  = "cainjector.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "startupapicheck.timeout"
+    value = "5m"
+  }
+
+  set {
+    name  = "webhook.hostNetwork"
+    value = "false"
+  }
+
+  set {
+    name  = "webhook.securityContext.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "startupapicheck.enabled"
+    value = "false"
+  }
+
+  set {
+    name  = "webhook.extraArgs"
+    value = "{--v=5}"
+  }
+
+  set {
+    name  = "webhook.timeoutSeconds"
+    value = "30"
+  }
+
+  set {
+    name  = "ingressShim.defaultIssuerName"
+    value = var.cluster_issuer
+  }
+
+  set {
+    name  = "ingressShim.defaultIssuerKind"
+    value = "ClusterIssuer"
+  }
+
 
   set {
     name  = "resources.requests.cpu"
@@ -43,35 +93,35 @@ resource "helm_release" "cert_manager" {
   }
 }
 
-resource "kubernetes_manifest" "cluster_issuer" {
-  manifest = {
-    apiVersion = "cert-manager.io/v1"
-    kind       = "ClusterIssuer"
-    metadata = {
-      name = var.cluster_issuer
-    }
-    spec = {
-      acme = {
-        email  = "adriangherasim1@gmail.com"
-        server = "https://acme-v02.api.letsencrypt.org/directory"
-        privateKeySecretRef = {
-          name = "letsencrypt-production"
-        }
-        solvers = [
-          {
-            http01 = {
-              ingress = {
-                class = "nginx"
-              }
-            }
-          }
-        ]
-      }
-    }
-  }
-
-  depends_on = [helm_release.cert_manager]
-}
+# resource "kubernetes_manifest" "cluster_issuer" {
+#   manifest = {
+#     apiVersion = "cert-manager.io/v1"
+#     kind       = "ClusterIssuer"
+#     metadata = {
+#       name = var.cluster_issuer
+#     }
+#     spec = {
+#       acme = {
+#         email  = "adriangherasim1@gmail.com"
+#         server = "https://acme-v02.api.letsencrypt.org/directory"
+#         privateKeySecretRef = {
+#           name = "letsencrypt-production"
+#         }
+#         solvers = [
+#           {
+#             http01 = {
+#               ingress = {
+#                 class = "nginx"
+#               }
+#             }
+#           }
+#         ]
+#       }
+#     }
+#   }
+#
+#   depends_on = [helm_release.cert_manager]
+# }
 
 resource "helm_release" "nginx-ingress" {
   name       = "nginx-ingress-${var.environment}"
@@ -81,40 +131,54 @@ resource "helm_release" "nginx-ingress" {
   version    = "4.12.2"
 
   values = [
-    <<-EOT
-    controller:
-      replicaCount: 1
-      admissionWebhooks:
-        certManager:
-          enabled: true
-      metrics:
-        enabled: true
-        serviceMonitor:
-          enabled: true
-      service:
-        externalTrafficPolicy: Local
-        annotations:
-          service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
-      allowSnippetAnnotations: true
-      config:
-        enable-real-ip: "true"
-        proxy-body-size: "20m"
-        ssl-protocols: "TLSv1.2 TLSv1.3"
-        ssl-ciphers: "HIGH:!aNULL:!MD5"
-        hsts: "true"
-        hsts-max-age: "31536000"
-        hsts-include-subdomains: "true"
-      resources:
-        requests:
-          cpu: 200m
-          memory: 256Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
-    EOT
+    yamlencode({
+      controller = {
+        replicaCount = 1
+        admissionWebhooks = {
+          certManager = {
+            enabled = true
+          }
+        }
+        metrics = {
+          enabled = true
+          serviceMonitor = {
+            enabled = true
+          }
+        }
+        service = {
+          externalTrafficPolicy = "Local"
+          annotations = {
+
+            "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" = var.cloud_provider == "azure" ? "/healthz" : null
+            "cloud.google.com/neg" = var.cloud_provider == "gcp" ? "{\"ingress\": true}" : null
+            "cloud.google.com/load-balancer-type" = var.cloud_provider == "gcp" ? "External" : null
+          }
+        }
+        allowSnippetAnnotations = true
+        config = {
+          "enable-real-ip" = "true"
+          "proxy-body-size" = "20m"
+          "ssl-protocols" = "TLSv1.2 TLSv1.3"
+          "ssl-ciphers" = "HIGH:!aNULL:!MD5"
+          "hsts" = "true"
+          "hsts-max-age" = "31536000"
+          "hsts-include-subdomains" = "true"
+        }
+        resources = {
+          requests = {
+            cpu = "200m"
+            memory = "256Mi"
+          }
+          limits = {
+            cpu = "500m"
+            memory = "512Mi"
+          }
+        }
+      }
+    })
   ]
 
-  depends_on = [helm_release.cert_manager]
+  depends_on = [helm_release.cert_manager, helm_release.kube-prometheus]
 }
 
 resource "kubernetes_ingress_v1" "ingress_grafana" {
@@ -133,12 +197,12 @@ resource "kubernetes_ingress_v1" "ingress_grafana" {
 
   spec {
     tls {
-      hosts = ["${var.project_name}.westeurope.cloudapp.azure.com"]
+      hosts = [local.current_domain]
       secret_name = "tls-secret-monitoring"
     }
 
     rule {
-      host = "${var.project_name}.westeurope.cloudapp.azure.com"
+      host = local.current_domain
       http {
         path {
           path_type = "Prefix"

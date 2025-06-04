@@ -1,5 +1,5 @@
 locals {
-  argocd_domain = "${var.project_name}.westeurope.cloudapp.azure.com"
+  argocd_domain = local.current_domain
 }
 
 resource "kubernetes_namespace_v1" "argocd" {

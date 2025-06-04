@@ -1,4 +1,9 @@
-# output "AKS_URL" {
-#   description = "The URL to access the AKS cluster"
-#   value       = data.azurerm_public_ip.aks_public_ip.fqdn
-# }
+output "project_name" {
+  value       = var.project_name
+  description = "The name of the project"
+}
+
+output "domain" {
+  value       = local.current_domain
+  description = "The domain name for the cluster"
+}
