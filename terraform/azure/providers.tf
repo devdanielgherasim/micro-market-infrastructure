@@ -6,18 +6,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "=4.31.0"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "=2.17.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "=2.37.1"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = "=0.13.1"
-    }
   }
 
   backend "azurerm" {
