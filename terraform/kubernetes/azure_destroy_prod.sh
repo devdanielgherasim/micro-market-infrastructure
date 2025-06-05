@@ -1,12 +1,12 @@
 #!/bin/bash
 
-terraform init \
-  -backend-config="resource_group_name=rg-infrastructure" \
+terraform init -reconfigure -backend-config="resource_group_name=rg-infrastructure" \
   -backend-config="storage_account_name=terraformmicrostate" \
   -backend-config="container_name=tfstate" \
-  -backend-config="key=environments/dev/terraform.tfstate"
+  -backend-config="key=kubernetes.tfstate"
 
-terraform destroy --var-file=./tfvars_files/dev.tfvars \
+terraform destroy --var-file=./tfvars_files/prod.tfvars \
+  --var cloud_provider="azure" \
   --var client_id="88376f43-c3ee-4be1-bd05-20c20128b666" \
   --var client_secret="YgW8Q~c1koEgr-cvHgSnkCieYtYA2Pr~MFB6dbDu" \
   --var tenant_id="607d63ca-9f36-4ad8-9f71-8b3efc392eb1" \

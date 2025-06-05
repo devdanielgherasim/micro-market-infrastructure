@@ -1,6 +1,10 @@
 #!/bin/bash
 
-terraform init
+terraform init \
+  -backend-config="resource_group_name=rg-infrastructure" \
+  -backend-config="storage_account_name=terraformmicrostate" \
+  -backend-config="container_name=tfstate" \
+  -backend-config="key=environments/dev/terraform.tfstate"
 
 terraform apply --var-file=./tfvars_files/dev.tfvars \
   --var client_id="88376f43-c3ee-4be1-bd05-20c20128b666" \

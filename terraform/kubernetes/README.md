@@ -4,6 +4,7 @@ This Terraform configuration sets up a Kubernetes infrastructure that can be dep
 
 - Microsoft Azure
 - Google Cloud Platform (GCP)
+- Amazon Web Services (AWS)
 
 ## Prerequisites
 
@@ -21,6 +22,11 @@ This Terraform configuration sets up a Kubernetes infrastructure that can be dep
 - Google Cloud SDK
 - Google Cloud project
 - Service Account with appropriate permissions
+
+### AWS Requirements
+- AWS CLI
+- AWS account
+- IAM user with appropriate permissions
 
 ## Configuration
 
@@ -53,6 +59,15 @@ The infrastructure is configured using Terraform variables. You can set these va
 | `gcp_region` | The Google Cloud region | `us-central1` |
 | `gcp_zone` | The Google Cloud zone | `us-central1-a` |
 | `gcp_credentials` | The path to the Google Cloud credentials file | - |
+
+### AWS-Specific Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `aws_region` | The AWS region | `us-east-1` |
+| `aws_access_key` | The AWS access key | - |
+| `aws_secret_key` | The AWS secret key | - |
+| `aws_session_token` | The AWS session token | - |
 
 ## Usage
 
@@ -111,15 +126,49 @@ The infrastructure is configured using Terraform variables. You can set these va
    terraform apply -var-file="tfvars_files/dev.tfvars"
    ```
 
+### Deploying to AWS
+
+1. Set up your AWS credentials:
+   ```bash
+   export AWS_ACCESS_KEY_ID="your-access-key"
+   export AWS_SECRET_ACCESS_KEY="your-secret-key"
+   export AWS_SESSION_TOKEN="your-session-token"  # if using temporary credentials
+   ```
+
+2. Create or update your `.tfvars` file:
+   ```hcl
+   cloud_provider = "aws"
+   project_name   = "your-project-name"
+   environment    = "dev"
+   aws_region     = "us-east-1"
+   ```
+
+3. Initialize Terraform:
+   ```bash
+   terraform init
+   ```
+
+4. Apply the configuration:
+   ```bash
+   terraform apply -var-file="tfvars_files/dev.tfvars"
+   ```
+
+   Alternatively, you can use the provided script:
+   ```bash
+   ./aws_apply.sh
+   ```
+
 ## Components
 
 The infrastructure includes the following components:
 
-- **Kubernetes Cluster**: Managed by the cloud provider (AKS for Azure, GKE for GCP)
+- **Kubernetes Cluster**: Managed by the cloud provider (AKS for Azure, GKE for GCP, EKS for AWS)
 - **ArgoCD**: Continuous Delivery tool for Kubernetes
 - **Cert-Manager**: Certificate management for Kubernetes
 - **Nginx Ingress Controller**: Ingress controller for Kubernetes
 - **Prometheus & Grafana**: Monitoring and visualization
+- **Loki**: Log aggregation and storage, integrated with Grafana for log visualization
+- **Promtail**: Log collection agent that sends logs to Loki
 
 ## Accessing the Services
 
@@ -127,10 +176,13 @@ After deployment, you can access the services using the following URLs:
 
 - ArgoCD: `https://<project_name>.<region>.<domain>/`
 - Grafana: `https://<project_name>.<region>.<domain>/grafana`
+  - Metrics: Available in the Prometheus data source
+  - Logs: Available in the Loki data source
 
 Where:
 - For Azure: `<domain>` is `cloudapp.azure.com`
 - For GCP: `<domain>` is the value of `domain_suffix` (default: `nip.io`)
+- For AWS: `<domain>` is the EKS cluster endpoint (accessible via `kubectl cluster-info`)
 
 ## Troubleshooting
 
@@ -139,6 +191,10 @@ Where:
 1. **Provider Configuration**: Ensure you have the correct credentials for your chosen cloud provider.
 2. **Kubernetes Connection**: If you can't connect to the Kubernetes cluster, check that your kubeconfig is correctly set up.
 3. **Ingress Issues**: If you can't access services via ingress, check that the DNS records are correctly configured.
+4. **Logging Issues**: If logs are not appearing in Grafana:
+   - Check that the Loki data source is correctly configured in Grafana
+   - Verify that Promtail pods are running and collecting logs
+   - Check Promtail logs for any connection issues to Loki
 
 ## Contributing
 

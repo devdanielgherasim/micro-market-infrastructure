@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/google"
       version = "=5.10.0"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "=5.40.0"
+    }
     helm = {
       source  = "hashicorp/helm"
       version = "=2.17.0"
@@ -20,7 +24,7 @@ terraform {
     }
   }
 
-  backend "gcs" {}
+  backend "s3" {}
 }
 
 provider "azurerm" {
@@ -39,9 +43,18 @@ provider "google" {
   credentials = var.cloud_provider == "gcp" ? var.gcp_credentials : null
 }
 
+provider "aws" {
+  region     = var.cloud_provider == "aws" ? var.aws_region : null
+  access_key = var.cloud_provider == "aws" ? var.aws_access_key : null
+  secret_key = var.cloud_provider == "aws" ? var.aws_secret_key : null
+  token      = var.cloud_provider == "aws" ? var.aws_session_token : null
+}
+
 provider "kubernetes" {
   host = (
-    var.cloud_provider == "azure" ? data.terraform_remote_state.azure[0].outputs.kubernetes_host : var.cloud_provider == "gcp" ? data.terraform_remote_state.gcp[0].outputs.kubernetes_host : null
+    var.cloud_provider == "azure" ? data.terraform_remote_state.azure[0].outputs.kubernetes_host : 
+    var.cloud_provider == "gcp" ? data.terraform_remote_state.gcp[0].outputs.kubernetes_host : 
+    var.cloud_provider == "aws" ? data.terraform_remote_state.aws[0].outputs.eks_cluster_endpoint : null
   )
 
   client_certificate = var.cloud_provider == "azure" ? base64decode(data.terraform_remote_state.azure[0].outputs.kubernetes_client_certificate) : null
@@ -55,16 +68,28 @@ provider "kubernetes" {
     }
   }
 
+  dynamic "exec" {
+    for_each = var.cloud_provider == "aws" ? [1] : []
+    content {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", data.terraform_remote_state.aws[0].outputs.eks_cluster_name]
+    }
+  }
+
   cluster_ca_certificate = (
     var.cloud_provider == "azure" ? base64decode(data.terraform_remote_state.azure[0].outputs.kubernetes_cluster_ca_certificate) : 
-    var.cloud_provider == "gcp" ? base64decode(data.terraform_remote_state.gcp[0].outputs.kubernetes_cluster_ca_certificate) : null
+    var.cloud_provider == "gcp" ? base64decode(data.terraform_remote_state.gcp[0].outputs.kubernetes_cluster_ca_certificate) : 
+    var.cloud_provider == "aws" ? base64decode(data.terraform_remote_state.aws[0].outputs.eks_cluster_certificate_authority_data) : null
   )
 }
 
 provider "helm" {
   kubernetes {
     host = (
-      var.cloud_provider == "azure" ? data.terraform_remote_state.azure[0].outputs.kubernetes_host : var.cloud_provider == "gcp" ? data.terraform_remote_state.gcp[0].outputs.kubernetes_host : null
+      var.cloud_provider == "azure" ? data.terraform_remote_state.azure[0].outputs.kubernetes_host : 
+      var.cloud_provider == "gcp" ? data.terraform_remote_state.gcp[0].outputs.kubernetes_host : 
+      var.cloud_provider == "aws" ? data.terraform_remote_state.aws[0].outputs.eks_cluster_endpoint : null
     )
 
     client_certificate = var.cloud_provider == "azure" ? base64decode(data.terraform_remote_state.azure[0].outputs.kubernetes_client_certificate) : null
@@ -78,9 +103,19 @@ provider "helm" {
       }
     }
 
+    dynamic "exec" {
+      for_each = var.cloud_provider == "aws" ? [1] : []
+      content {
+        api_version = "client.authentication.k8s.io/v1beta1"
+        command     = "aws"
+        args        = ["eks", "get-token", "--cluster-name", data.terraform_remote_state.aws[0].outputs.eks_cluster_name]
+      }
+    }
+
     cluster_ca_certificate = (
       var.cloud_provider == "azure" ? base64decode(data.terraform_remote_state.azure[0].outputs.kubernetes_cluster_ca_certificate) : 
-      var.cloud_provider == "gcp" ? base64decode(data.terraform_remote_state.gcp[0].outputs.kubernetes_cluster_ca_certificate) : null
+      var.cloud_provider == "gcp" ? base64decode(data.terraform_remote_state.gcp[0].outputs.kubernetes_cluster_ca_certificate) : 
+      var.cloud_provider == "aws" ? base64decode(data.terraform_remote_state.aws[0].outputs.eks_cluster_certificate_authority_data) : null
     )
   }
 }

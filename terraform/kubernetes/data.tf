@@ -1,10 +1,10 @@
 locals {
-  domain = {
-    azure = "${var.project_name}.westeurope.cloudapp.azure.com"
-    gcp   = data.terraform_remote_state.gcp[0].outputs.cluster_endpoint
-  }
-
-  current_domain = local.domain[var.cloud_provider]
+  current_domain = (
+    var.cloud_provider == "azure" ? "${var.project_name}.westeurope.cloudapp.azure.com" :
+    var.cloud_provider == "gcp" ? data.terraform_remote_state.gcp[0].outputs.cluster_endpoint :
+    var.cloud_provider == "aws" ? data.terraform_remote_state.aws[0].outputs.eks_cluster_endpoint :
+    null
+  )
 }
 
 data "terraform_remote_state" "azure" {
@@ -24,5 +24,15 @@ data "terraform_remote_state" "gcp" {
   config = {
     bucket = "terraformmicroservicesstate"
     prefix = "terraform/state"
+  }
+}
+
+data "terraform_remote_state" "aws" {
+  count   = var.cloud_provider == "aws" ? 1 : 0
+  backend = "s3"
+  config = {
+    bucket = "terraform-microservices1691715-state"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
   }
 }
