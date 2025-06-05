@@ -1,28 +1,32 @@
-# GCP Infrastructure with Terraform
+# Azure Infrastructure with Terraform
 
-This directory contains Terraform configurations for deploying infrastructure on Google Cloud Platform (GCP).
+This directory contains Terraform configurations for deploying infrastructure on Azure.
 
 ## Environment-Specific Remote States
 
 The Terraform configuration in this directory uses environment-specific remote states to isolate different environments (dev, prod, etc.). This is achieved by:
 
-1. Using a generic backend configuration in `main.tf`:
+1. Using a generic backend configuration in `providers.tf`:
    ```hcl
-   backend "gcs" {}
+   backend "azurerm" {}
    ```
 
 2. Providing environment-specific backend configurations during initialization in the apply and destroy scripts:
    - For development environment (`apply.sh` and `destroy.sh`):
      ```bash
      terraform init \
-       -backend-config="bucket=terraformmicroservicesstate" \
-       -backend-config="prefix=terraform/environments/dev/state"
+       -backend-config="resource_group_name=rg-infrastructure" \
+       -backend-config="storage_account_name=terraformmicrostate" \
+       -backend-config="container_name=tfstate" \
+       -backend-config="key=environments/dev/terraform.tfstate"
      ```
    - For production environment (`apply_prod.sh` and `destroy_prod.sh`):
      ```bash
      terraform init \
-       -backend-config="bucket=terraformmicroservicesstate" \
-       -backend-config="prefix=terraform/environments/prod/state"
+       -backend-config="resource_group_name=rg-infrastructure" \
+       -backend-config="storage_account_name=terraformmicrostate" \
+       -backend-config="container_name=tfstate" \
+       -backend-config="key=environments/prod/terraform.tfstate"
      ```
 
 This approach allows for:
@@ -66,21 +70,22 @@ Environment-specific variables are defined in the `tfvars_files` directory:
 - `dev.tfvars`: Variables for the development environment
 - `prod.tfvars`: Variables for the production environment
 
-These files define environment-specific settings such as machine types, node counts, and labels.
+These files define environment-specific settings such as VM sizes, node counts, and tags.
 
-## GCP Resources
+## Azure Resources
 
-The infrastructure includes the following GCP resources:
+The infrastructure includes the following Azure resources:
 
-- **Google Kubernetes Engine (GKE)**: For running containerized applications
-- **Artifact Registry**: For storing container images
-- **Service Accounts**: For authentication and authorization
+- **Azure Container Registry (ACR)**: For storing container images
+- **Azure Kubernetes Service (AKS)**: For running containerized applications
+- **Resource Group**: For organizing and managing Azure resources
 
 ## Authentication
 
-The scripts use Service Account authentication with credentials specified in the environment variable:
-```bash
-export GOOGLE_APPLICATION_CREDENTIALS="../i-binder-461513-v8-40884e000270.json"
-```
+The scripts use Service Principal authentication with the following credentials:
+- Client ID
+- Client Secret
+- Tenant ID
+- Subscription ID
 
-This credential file is also passed as a variable to the Terraform commands in the apply and destroy scripts.
+These credentials are passed as variables to the Terraform commands in the apply and destroy scripts.

@@ -4,9 +4,9 @@ export GOOGLE_APPLICATION_CREDENTIALS="../i-binder-461513-v8-40884e000270.json"
 
 terraform init \
   -backend-config="bucket=terraformmicroservicesstate" \
-  -backend-config="prefix=terraform/environments/dev/state"
+  -backend-config="prefix=terraform/environments/prod/state"
 
-terraform destroy --var-file=./tfvars_files/dev.tfvars \
+terraform destroy --var-file=./tfvars_files/prod.tfvars \
   --var project_id="i-binder-461513-v8" \
   --var credentials_file="../i-binder-461513-v8-40884e000270.json"
 

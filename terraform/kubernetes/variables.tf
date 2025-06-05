@@ -1,10 +1,9 @@
 variable "cloud_provider" {
   type        = string
-  description = "The cloud provider to use (azure or gcp)"
-  default     = "azure"
+  description = "The cloud provider to use (azure, gcp, or aws)"
   validation {
-    condition = contains(["azure", "gcp"], var.cloud_provider)
-    error_message = "The cloud_provider value must be 'azure' or 'gcp'."
+    condition = contains(["azure", "gcp", "aws"], var.cloud_provider)
+    error_message = "The cloud_provider value must be 'azure', 'gcp', or 'aws'."
   }
 }
 variable "client_id" {
@@ -63,4 +62,30 @@ variable "environment" {
 variable "cluster_issuer" {
   type    = string
   default = "letsencrypt-production-cluster-issuer"
+}
+
+variable "aws_region" {
+  type        = string
+  description = "The AWS region where resources will be deployed"
+  default     = "us-east-1"
+}
+
+variable "aws_access_key" {
+  type        = string
+  description = "The AWS access key for authentication"
+  sensitive   = true
+  default     = ""
+}
+
+variable "aws_secret_key" {
+  type        = string
+  description = "The AWS secret key for authentication"
+  sensitive   = true
+  default     = ""
+}
+
+variable "aws_session_token" {
+  description = "AWS session token for temporary credentials"
+  type        = string
+  sensitive   = true
 }
