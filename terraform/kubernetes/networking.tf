@@ -93,36 +93,6 @@ resource "helm_release" "cert_manager" {
   }
 }
 
-# resource "kubernetes_manifest" "cluster_issuer" {
-#   manifest = {
-#     apiVersion = "cert-manager.io/v1"
-#     kind       = "ClusterIssuer"
-#     metadata = {
-#       name = var.cluster_issuer
-#     }
-#     spec = {
-#       acme = {
-#         email  = "adriangherasim1@gmail.com"
-#         server = "https://acme-v02.api.letsencrypt.org/directory"
-#         privateKeySecretRef = {
-#           name = "letsencrypt-production"
-#         }
-#         solvers = [
-#           {
-#             http01 = {
-#               ingress = {
-#                 class = "nginx"
-#               }
-#             }
-#           }
-#         ]
-#       }
-#     }
-#   }
-#
-#   depends_on = [helm_release.cert_manager]
-# }
-
 resource "helm_release" "nginx-ingress" {
   name       = "nginx-ingress-${var.environment}"
   repository = "https://kubernetes.github.io/ingress-nginx"

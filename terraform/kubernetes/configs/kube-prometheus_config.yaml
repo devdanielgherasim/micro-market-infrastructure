@@ -1,0 +1,63 @@
+prometheus:
+  prometheusSpec:
+    retention: "30d"
+    evaluationInterval: "60s"
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: ""
+    serviceMonitorNamespaceSelector: ""
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: ""
+    podMonitorNamespaceSelector: ""
+    scrapeConfigSelectorNilUsesHelmValues: false
+    scrapeConfigSelector: ""
+    scrapeConfigNamespaceSelector: ""
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: "managed-csi"
+          resources:
+            limits:
+              memory: 3000Mi
+
+grafana:
+  serviceMonitor:
+    scrapeTimeout: "30s"
+  additionalDataSources:
+      - name: "loki"
+        type: "loki"
+        default: true
+        access: "proxy"
+        url: "http://loki:3100/"
+        jsonData:
+          httpHeaderName1: "X-Scope-OrgID"
+        secureJsonData:
+          httpHeaderValue1: "test"
+        editable: true
+
+defaultRules:
+  rules:
+    kubeScheduler: false
+  disabled:
+    KubeControllerManagerDown: true
+    KubeSchedulerDown: true
+
+kubeProxy:
+  enabled: true
+  service:
+    enabled: true
+    selector:
+      component: kube-proxy
+
+kubeControllerManager:
+  enabled: false
+  service:
+    enabled: false
+  serviceMonitor:
+    enabled: false
+
+kubeScheduler:
+  enabled: false
+  service:
+    enabled: false
+  serviceMonitor:
+    enabled: false

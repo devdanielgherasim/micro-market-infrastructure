@@ -24,7 +24,11 @@ terraform {
     }
   }
 
-  backend "s3" {}
+  backend "azurerm" {
+    # The configuration parameters will be loaded from config.azure.tfbackend
+    # Don't put any parameter values here
+  }
+
 }
 
 provider "azurerm" {
