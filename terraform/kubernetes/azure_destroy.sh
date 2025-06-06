@@ -1,9 +1,6 @@
 #!/bin/bash
 
-terraform init -reconfigure -backend-config="resource_group_name=rg-infrastructure" \
-  -backend-config="storage_account_name=terraformmicrostate" \
-  -backend-config="container_name=tfstate" \
-  -backend-config="key=kubernetes.tfstate"
+terraform init -backend-config="config.azure.tfbackend"
 
 terraform destroy --var-file=./tfvars_files/dev.tfvars \
   --var cloud_provider="azure" \

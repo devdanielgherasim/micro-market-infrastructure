@@ -88,4 +88,5 @@ variable "aws_session_token" {
   description = "AWS session token for temporary credentials"
   type        = string
   sensitive   = true
+  default     = ""
 }

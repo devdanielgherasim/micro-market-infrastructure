@@ -2,6 +2,11 @@ locals {
   argocd_domain = local.current_domain
 }
 
+resource "random_password" "argo_password" {
+  length  = 16
+  special = true
+}
+
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
     name = "argocd"
@@ -19,96 +24,53 @@ resource "helm_release" "argocd" {
   chart            = "argo-cd"
   version          = "8.0.10"
   namespace        = kubernetes_namespace_v1.argocd.metadata[0].name
-  depends_on = [helm_release.cert_manager]
+  depends_on       = [helm_release.cert_manager]
   create_namespace = false
+  dependency_update = true
+  lint              = true
+  values            = [file("${path.root}/configs/argocd_config.yaml")]
+  timeout           = 600
 
-  values = [
-    yamlencode({
-      global = {
-        domain = local.argocd_domain
-      }
+  set {
+    name  = "configs.secret.argocdServerAdminPassword"
+    value = random_password.argo_password.result
+  }
 
-      server = {
-        extraArgs = [
-          "--insecure",
-        ]
+  set {
+    name  = "global.domain"
+    value = local.argocd_domain
+  }
 
-        replicas = 1
+  set {
+    name  = "configs.cm.ui\\.bannercontent"
+    value = "Hi! This is ArgoCD on ${var.environment}"
+  }
 
-        ingress = {
-          enabled          = true
-          ingressClassName = "nginx"
-          hosts = [local.argocd_domain]
-          paths = ["/"]
-          pathType         = "Prefix"
+  set {
+    name  = "configs.cm.url"
+    value = "https://${local.argocd_domain}/argocd"
+  }
 
-          tls = [
-            {
-              hosts = [local.argocd_domain]
-              secretName = "argocd-server-tls"
-            }
-          ]
+  set {
+    name  = "configs.cm.statusbadge\\.url"
+    value = "https://${local.argocd_domain}/argocd"
+  }
 
-          annotations = {
-            "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
-            "kubernetes.io/tls-acme"                         = "true"
-            "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-            "nginx.ingress.kubernetes.io/ssl-passthrough"    = "false"
-            "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTP"
-          }
-        }
+  set {
+    name  = "configs.cm.kustomize\\.buildOptions"
+    value = "--enable-helm --load-restrictor LoadRestrictionsNone"
+  }
 
-        config = {
-          "application.instanceLabelKey" = "argocd.argoproj.io/instance"
-          "admin.enabled"                = "true"
-
-          "server.insecure" = "true"
-        }
-
-        service = {
-          type       = "ClusterIP"
-          port       = 80
-          targetPort = 8080
-        }
-      }
-
-      redis = {
-        enabled = true
-      }
-
-      repoServer = {
-        replicas = 1
-      }
-
-      controller = {
-        replicas = 1
-      }
-
-      applicationSet = {
-        enabled  = true
-        replicas = 1
-      }
-
-      configs = {
-        tls = {
-          server = {
-            enabled = false
-          }
-        }
-
-        cm = {
-          "server.insecure" = "true"
-        }
-      }
-
-      rbac = {
-        create     = true
-        pspEnabled = false
-      }
-
-      ha = {
-        enabled = false
-      }
-    })
-  ]
+  set_sensitive {
+    name  = "configs.credentialTemplates.https-creds.password"
+    value = "glpat-s7pTFTXzVbi8vBHhbomj" // TODO DE PUS IN SECRETS
+  }
+  set {
+    name  = "configs.credentialTemplates.https-creds.username"
+    value = "adriangherasim1@gmail.com"
+  }
+  set {
+    name  = "configs.credentialTemplates.https-creds.url"
+    value = "https://gitlab.com/microservices1691715"
+  }
 }
