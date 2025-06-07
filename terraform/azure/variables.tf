@@ -36,7 +36,7 @@ variable "acr_sku_name" {
 }
 variable "aks_vm_size" {
   type    = string
-  default = "Standard_DS2_v2"
+  default = "Standard_F4s_v2"
 }
 variable "tags" {
   type = map(string)

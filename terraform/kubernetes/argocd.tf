@@ -19,7 +19,7 @@ resource "kubernetes_namespace_v1" "argocd" {
 }
 
 resource "helm_release" "argocd" {
-  name             = "argocd-${var.environment}"
+  name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
   version          = "8.0.10"
@@ -33,7 +33,7 @@ resource "helm_release" "argocd" {
 
   set {
     name  = "configs.secret.argocdServerAdminPassword"
-    value = random_password.argo_password.result
+    value = bcrypt(random_password.argo_password.result)
   }
 
   set {
