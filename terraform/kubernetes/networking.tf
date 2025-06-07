@@ -9,7 +9,7 @@ resource "kubernetes_namespace_v1" "nginx" {
 }
 
 resource "helm_release" "cert_manager" {
-  name             = "cert-manager-${var.environment}"
+  name             = "cert-manager"
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
   version          = "v1.17.2"
@@ -71,7 +71,6 @@ resource "helm_release" "cert_manager" {
     value = "ClusterIssuer"
   }
 
-
   set {
     name  = "resources.requests.cpu"
     value = "100m"
@@ -94,7 +93,7 @@ resource "helm_release" "cert_manager" {
 }
 
 resource "helm_release" "nginx-ingress" {
-  name       = "nginx-ingress-${var.environment}"
+  name       = "nginx-ingress"
   repository = "https://kubernetes.github.io/ingress-nginx"
   namespace  = kubernetes_namespace_v1.nginx.metadata[0].name
   chart      = "ingress-nginx"
@@ -182,6 +181,48 @@ resource "kubernetes_ingress_v1" "ingress_grafana" {
               name = "kube-prometheus-stack-grafana"
               port {
                 number = 80
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_ingress_v1" "ingress_argocd" {
+  metadata {
+    name      = "argocd-ingress"
+    namespace = kubernetes_namespace_v1.argocd.metadata[0].name
+    annotations = {
+      "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
+      "kubernetes.io/ingress.class"                    = "nginx"
+      "nginx.ingress.kubernetes.io/proxy-body-size"    = "20m"
+      "acme.cert-manager.io/http01-edit-in-place"      = "true"
+      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
+      "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTPS"
+      "nginx.ingress.kubernetes.io/ssl-passthrough"    = "true"
+    }
+  }
+  depends_on = [helm_release.nginx-ingress, helm_release.cert_manager, helm_release.argocd]
+
+  spec {
+    tls {
+      hosts = [local.current_domain]
+      secret_name = "tls-secret-argocd"
+    }
+
+    rule {
+      host = local.current_domain
+      http {
+        path {
+          path_type = "Prefix"
+          path      = "/argocd"
+          backend {
+            service {
+              name = "argocd-server"
+              port {
+                number = 443
               }
             }
           }

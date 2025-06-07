@@ -2,7 +2,7 @@ location     = "westeurope"
 project_name = "microservices1691715"
 environment  = "prod"
 acr_sku_name = "Basic"
-aks_vm_size  = "Standard_A2_v2"
+aks_vm_size  = "Standard_F4s_v2"
 
 tags = {
   ManagedBy   = "Terraform"
