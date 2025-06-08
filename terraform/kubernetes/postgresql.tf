@@ -24,23 +24,21 @@ resource "helm_release" "postgresql" {
   dependency_update = true
   lint              = true
   timeout           = 600
-  depends_on        = [helm_release.cert_manager]
+  depends_on        = [helm_release.cert_manager, helm_release.kube-prometheus]
 
   values = [
     <<-EOT
     global:
       postgresql:
         auth:
-          postgresPassword: "${random_password.postgresql_password.result}"
           username: "postgres"
-          password: "postgres"
           database: ${var.project_name}
-    
+
     primary:
       persistence:
         enabled: true
         size: 10Gi
-      
+
       resources:
         requests:
           memory: "256Mi"
@@ -48,7 +46,7 @@ resource "helm_release" "postgresql" {
         limits:
           memory: "1Gi"
           cpu: "1000m"
-          
+
     metrics:
       enabled: true
       serviceMonitor:
@@ -61,7 +59,7 @@ resource "helm_release" "postgresql" {
     name  = "global.postgresql.auth.postgresPassword"
     value = random_password.postgresql_password.result
   }
-  
+
   set_sensitive {
     name  = "global.postgresql.auth.password"
     value = random_password.postgresql_password.result

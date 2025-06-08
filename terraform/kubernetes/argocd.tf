@@ -3,8 +3,30 @@ locals {
 }
 
 resource "random_password" "argo_password" {
-  length  = 16
-  special = true
+  length      = 16
+  special     = true
+  min_special = 2
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+}
+
+resource "random_password" "argo_oidc_client_secret" {
+  length      = 16
+  special     = true
+  min_special = 2
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+}
+
+resource "random_password" "argo_redis_password" {
+  length      = 16
+  special     = true
+  min_special = 2
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
 }
 
 resource "kubernetes_namespace_v1" "argocd" {
@@ -19,58 +41,67 @@ resource "kubernetes_namespace_v1" "argocd" {
 }
 
 resource "helm_release" "argocd" {
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  version          = "8.0.10"
-  namespace        = kubernetes_namespace_v1.argocd.metadata[0].name
-  depends_on       = [helm_release.cert_manager]
-  create_namespace = false
-  dependency_update = true
-  lint              = true
-  values            = [file("${path.root}/configs/argocd_config.yaml")]
-  timeout           = 600
+  name              = "argocd"
+  repository        = "https://argoproj.github.io/argo-helm"
+  chart             = "argo-cd"
+  version           = "5.53.3"
+  namespace         = kubernetes_namespace_v1.argocd.metadata[0].name
+  depends_on        = [helm_release.cert_manager]
+  create_namespace  = false
+  values            = [templatefile("${path.root}/configs/argocd_config.yaml", {
+    ARGOCD_URL = "https://${local.argocd_domain}/argocd",
+    KEYCLOAK_ISSUER = "https://${local.argocd_domain}/auth/realms/microservices",
+    DOMAIN = local.argocd_domain
+  })]
+  timeout           = 300
 
-  set {
+  set_sensitive {
     name  = "configs.secret.argocdServerAdminPassword"
-    value = bcrypt(random_password.argo_password.result)
+    value = random_password.argo_password.result
   }
 
   set {
-    name  = "global.domain"
-    value = local.argocd_domain
+    name  = "configs.secret.createSecret"
+    value = "true"
   }
 
   set {
-    name  = "configs.cm.ui\\.bannercontent"
-    value = "Hi! This is ArgoCD on ${var.environment}"
-  }
-
-  set {
-    name  = "configs.cm.url"
-    value = "https://${local.argocd_domain}/argocd"
-  }
-
-  set {
-    name  = "configs.cm.statusbadge\\.url"
-    value = "https://${local.argocd_domain}/argocd"
-  }
-
-  set {
-    name  = "configs.cm.kustomize\\.buildOptions"
-    value = "--enable-helm --load-restrictor LoadRestrictionsNone"
+    name  = "server.certificate.issuer.name"
+    value = var.cluster_issuer
   }
 
   set_sensitive {
     name  = "configs.credentialTemplates.https-creds.password"
-    value = "glpat-s7pTFTXzVbi8vBHhbomj" // TODO DE PUS IN SECRETS
+    value = var.gitlab_token
   }
+
   set {
     name  = "configs.credentialTemplates.https-creds.username"
-    value = "adriangherasim1@gmail.com"
+    value = var.gitlab_username
   }
+
   set {
     name  = "configs.credentialTemplates.https-creds.url"
     value = "https://gitlab.com/microservices1691715"
+  }
+
+  set_sensitive {
+    name  = "configs.secret.extra.argo-oidc-client-secret"
+    value = random_password.argo_oidc_client_secret.result
+  }
+
+  set_sensitive {
+    name  = "redis.password"
+    value = random_password.argo_redis_password.result
+  }
+
+  set {
+    name  = "redis.secretName"
+    value = "argocd-redis"
+  }
+
+  set {
+    name  = "redis.createSecret"
+    value = "true"
   }
 }

@@ -3,11 +3,41 @@ kind: Application
 metadata:
   name: infrastructure-app-of-apps
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: infrastructure
   source:
     repoURL: https://gitlab.com/microservices1691715/deployment.git
     targetRevision: main
     path: "applications/dev/"
+    directory:
+      recurse: true
   destination:
     server: "https://kubernetes.default.svc"
+    namespace: "argocd"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        maxDuration: 2m
+  revisionHistoryLimit: 5
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: core
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs

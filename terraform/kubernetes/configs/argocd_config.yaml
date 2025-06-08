@@ -1,92 +1,110 @@
----
-#--------------------------------------------------------------
-# Values for the Argo CD Helm chart
-# For further configuration parameters please check terraform-config/argocd.tf
-#--------------------------------------------------------------
+global:
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.10.2
 
-## Argo Configs
-configs:
-  # General Argo CD configuration
-  ## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/argocd-cm.yaml
-  cm:
-    # -- Enable Status Badge
-    ## Ref: https://argo-cd.readthedocs.io/en/stable/user-guide/status-badge/
-    statusbadge.enabled: true
-    exec.enabled: true
-    ui.bannerpermanent: true
-
-  # Create the argocd-initial-admin-secret
+redis:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  externalConfig: false
+  existingSecret: false
   createSecret: true
 
-  # Argo CD configuration parameters
-  ## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/argocd-cmd-params-cm.yaml
+configs:
+  cm:
+    admin.enabled: true
+    timeout.reconciliation: 180s
+    application.instanceLabelKey: argocd.argoproj.io/instance
+    url: "${ARGOCD_URL}"
+    oidc.config: |
+      name: Keycloak
+      issuer: "${KEYCLOAK_ISSUER}"
+      clientID: argocd
+      clientSecret: $argo-oidc-client-secret
+      requestedScopes: ["openid", "profile", "email", "groups"]
+
   params:
-    server.insecure: true
+    server.insecure: false
     server.basehref: /argocd
     server.rootpath: /argocd
+    server.staticassets: /argocd
 
-## Server
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      p, role:org-admin, applications, *, */*, allow
+      p, role:org-admin, clusters, get, *, allow
+      p, role:org-admin, repositories, *, *, allow
+      p, role:org-admin, projects, *, *, allow
+      g, admin, role:org-admin
+
 server:
-  # TLS certificate configuration via cert-manager
-  ## Ref: https://argo-cd.readthedocs.io/en/stable/operator-manual/tls/#tls-certificates-used-by-argocd-server
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
   certificate:
-    # -- Deploy a Certificate resource (requires cert-manager)
     enabled: true
-    # Certificate issuer
-    ## Ref: https://cert-manager.io/docs/concepts/issuer
     issuer:
-      # -- Certificate issuer group. Set if using an external issuer. Eg. `cert-manager.io`
       group: "cert-manager.io"
-      # -- Certificate issuer kind. Either `Issuer` or `ClusterIssuer`
       kind: "ClusterIssuer"
-      # -- Certificate issuer name. Eg. `letsencrypt`
-      name: "letsencrypt-production-cluster-issuer"
-  # TLS certificate configuration via Secret
-  ## Ref: https://argo-cd.readthedocs.io/en/stable/operator-manual/tls/#tls-certificates-used-by-argocd-server
-  certificateSecret:
-    # -- Create argocd-server-tls secret
-    enabled: true
-  # Argo CD server ingress configuration
+      name: "letsencrypt-staging-cluster-issuer"
   ingress:
-    # -- Enable an ingress resource for the Argo CD server
-    enabled: false
-    # -- Defines which ingress controller will implement the resource
-    ingressClassName: "nginx"
-    # -- The path to Argo CD server
-    path: /argocd
-    # -- Enable TLS configuration for the hostname defined at `server.ingress.hostname`
-    ## TLS certificate will be retrieved from a TLS secret `argocd-server-tls`
-    ## You can create this secret via `certificate` or `certificateSecret` option
-    tls: true
-
-  metrics:
     enabled: true
-    service:
-      # Optional: customize service settings
-      annotations: {}
-    serviceMonitor:
-      enabled: true
+    ingressClassName: "nginx"
+    path: /argocd
+    pathType: Prefix
+    https: true
+    tls:
+      - hosts:
+          - "${DOMAIN}"
+        secretName: argocd-server-tls
+    hosts:
+      - "${DOMAIN}"
+    extraPaths:
+      - path: /argocd
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 443
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+      nginx.ingress.kubernetes.io/use-regex: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/service-upstream: "true"
+      nginx.ingress.kubernetes.io/upstream-vhost: "${DOMAIN}"
+      nginx.ingress.kubernetes.io/proxy-set-headers: "true"
+      nginx.ingress.kubernetes.io/proxy-set-header-X-Forwarded-Proto: "$scheme"
+      nginx.ingress.kubernetes.io/proxy-set-header-X-Forwarded-Host: "$host"
+      nginx.ingress.kubernetes.io/proxy-set-header-X-Forwarded-Uri: "$request_uri"
+      nginx.ingress.kubernetes.io/proxy-set-header-X-Forwarded-For: "$proxy_add_x_forwarded_for"
+      nginx.ingress.kubernetes.io/proxy-set-header-X-Real-IP: "$remote_addr"
 
 controller:
-  metrics:
-    enabled: true
-    service:
-      annotations: {}
-    serviceMonitor:
-      enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 repoServer:
-  metrics:
-    enabled: true
-    service:
-      annotations: {}
-    serviceMonitor:
-      enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
 
 applicationSet:
-  metrics:
-    enabled: true
-    service:
-      annotations: {}
-    serviceMonitor:
-      enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi

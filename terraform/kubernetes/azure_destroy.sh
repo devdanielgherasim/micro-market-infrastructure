@@ -2,6 +2,13 @@
 
 terraform init -backend-config="config.azure.tfbackend"
 
+kubectl delete -f ./configs/argocd_network_policies.yaml
+kubectl delete -f ./configs/argocd_application.yaml
+kubectl delete -f ./configs/argocd_project.yaml
+
+kubectl delete -f ./configs/prometheus_recording_rules.yaml
+kubectl delete -f ./configs/prometheus_alerting_rules.yaml
+
 terraform destroy --var-file=./tfvars_files/dev.tfvars \
   --var cloud_provider="azure" \
   --var client_id="88376f43-c3ee-4be1-bd05-20c20128b666" \

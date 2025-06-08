@@ -17,7 +17,7 @@ resource "helm_release" "cert_manager" {
   create_namespace = true
 
   set {
-    name  = "installCRDs"
+    name  = "crds.enabled"
     value = "true"
   }
 
@@ -59,6 +59,16 @@ resource "helm_release" "cert_manager" {
   set {
     name  = "webhook.timeoutSeconds"
     value = "30"
+  }
+
+  set {
+    name  = "webhook.timeoutSeconds"
+    value = "30"
+  }
+
+  set {
+    name  = "webhook.securePort"
+    value = "10250"
   }
 
   set {
@@ -117,7 +127,6 @@ resource "helm_release" "nginx-ingress" {
         service = {
           externalTrafficPolicy = "Local"
           annotations = {
-
             "service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path" = var.cloud_provider == "azure" ? "/healthz" : null
             "cloud.google.com/neg" = var.cloud_provider == "gcp" ? "{\"ingress\": true}" : null
             "cloud.google.com/load-balancer-type" = var.cloud_provider == "gcp" ? "External" : null
@@ -181,48 +190,6 @@ resource "kubernetes_ingress_v1" "ingress_grafana" {
               name = "kube-prometheus-stack-grafana"
               port {
                 number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-resource "kubernetes_ingress_v1" "ingress_argocd" {
-  metadata {
-    name      = "argocd-ingress"
-    namespace = kubernetes_namespace_v1.argocd.metadata[0].name
-    annotations = {
-      "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
-      "kubernetes.io/ingress.class"                    = "nginx"
-      "nginx.ingress.kubernetes.io/proxy-body-size"    = "20m"
-      "acme.cert-manager.io/http01-edit-in-place"      = "true"
-      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-      "nginx.ingress.kubernetes.io/backend-protocol"   = "HTTPS"
-      "nginx.ingress.kubernetes.io/ssl-passthrough"    = "true"
-    }
-  }
-  depends_on = [helm_release.nginx-ingress, helm_release.cert_manager, helm_release.argocd]
-
-  spec {
-    tls {
-      hosts = [local.current_domain]
-      secret_name = "tls-secret-argocd"
-    }
-
-    rule {
-      host = local.current_domain
-      http {
-        path {
-          path_type = "Prefix"
-          path      = "/argocd"
-          backend {
-            service {
-              name = "argocd-server"
-              port {
-                number = 443
               }
             }
           }

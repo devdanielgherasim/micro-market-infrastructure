@@ -60,8 +60,9 @@ variable "environment" {
   default = "dev"
 }
 variable "cluster_issuer" {
-  type    = string
-  default = "letsencrypt-production-cluster-issuer"
+  type        = string
+  description = "The cert-manager ClusterIssuer to use for certificate issuance"
+  default     = "letsencrypt-production-cluster-issuer"
 }
 
 variable "aws_region" {
@@ -88,5 +89,18 @@ variable "aws_session_token" {
   description = "AWS session token for temporary credentials"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "gitlab_token" {
+  description = "GitLab personal access token for ArgoCD"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "gitlab_username" {
+  description = "GitLab username for ArgoCD"
+  type        = string
   default     = ""
 }
