@@ -122,3 +122,22 @@ resource "google_project_iam_member" "service_account_connect" {
   role    = "roles/container.developer"
   member  = "serviceAccount:${var.service_account_email}"
 }
+
+resource "google_secret_manager_secret" "certificate_secret" {
+  secret_id = "${var.project_name}-${var.environment}-certificate"
+
+  replication {
+    automatic = true
+  }
+
+  labels = var.labels
+}
+
+resource "google_secret_manager_secret_iam_binding" "certificate_secret_binding" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.certificate_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  members   = [
+    "serviceAccount:${google_service_account.gke_sa.email}"
+  ]
+}
