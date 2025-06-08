@@ -40,20 +40,21 @@ resource "kubernetes_namespace_v1" "argocd" {
   }
 }
 
+
 resource "helm_release" "argocd" {
   name              = "argocd"
   repository        = "https://argoproj.github.io/argo-helm"
   chart             = "argo-cd"
-  version           = "5.53.3"
+  version           = "8.0.15"
   namespace         = kubernetes_namespace_v1.argocd.metadata[0].name
   depends_on        = [helm_release.cert_manager]
   create_namespace  = false
-  values            = [templatefile("${path.root}/configs/argocd_config.yaml", {
+  values            = [templatefile("${path.root}/configs/argocd_config_updated.yaml", {
     ARGOCD_URL = "https://${local.argocd_domain}/argocd",
     KEYCLOAK_ISSUER = "https://${local.argocd_domain}/auth/realms/microservices",
     DOMAIN = local.argocd_domain
   })]
-  timeout           = 300
+  timeout           = 200
 
   set_sensitive {
     name  = "configs.secret.argocdServerAdminPassword"
@@ -98,10 +99,5 @@ resource "helm_release" "argocd" {
   set {
     name  = "redis.secretName"
     value = "argocd-redis"
-  }
-
-  set {
-    name  = "redis.createSecret"
-    value = "true"
   }
 }
