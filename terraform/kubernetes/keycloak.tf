@@ -406,9 +406,95 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
           {
             "name": "admin",
             "description": "Administrator role"
+          },
+          {
+            "name": "editor",
+            "description": "Editor role for Grafana"
           }
         ]
       },
+      "groups": [
+        {
+          "name": "admin",
+          "path": "/admin",
+          "attributes": {},
+          "realmRoles": ["admin"],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "name": "editor",
+          "path": "/editor",
+          "attributes": {},
+          "realmRoles": ["editor"],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "name": "user",
+          "path": "/user",
+          "attributes": {},
+          "realmRoles": ["user"],
+          "clientRoles": {},
+          "subGroups": []
+        }
+      ],
+      "users": [
+        {
+          "username": "argocd-admin",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "ArgoCD",
+          "lastName": "Admin",
+          "email": "argocd-admin@microservices.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "${random_password.argo_password.result}",
+              "temporary": false
+            }
+          ],
+          "groups": ["admin"],
+          "realmRoles": ["admin"],
+          "clientRoles": {}
+        },
+        {
+          "username": "grafana-admin",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Grafana",
+          "lastName": "Admin",
+          "email": "grafana-admin@microservices.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "${random_password.grafana_password.result}",
+              "temporary": false
+            }
+          ],
+          "groups": ["admin"],
+          "realmRoles": ["admin"],
+          "clientRoles": {}
+        },
+        {
+          "username": "grafana-editor",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Grafana",
+          "lastName": "Editor",
+          "email": "grafana-editor@microservices.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "${random_password.grafana_password.result}",
+              "temporary": false
+            }
+          ],
+          "groups": ["editor"],
+          "realmRoles": ["editor"],
+          "clientRoles": {}
+        }
+      ],
       "clients": [
         {
           "clientId": "micro-market-frontend",
