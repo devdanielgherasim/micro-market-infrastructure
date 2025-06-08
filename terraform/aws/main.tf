@@ -106,3 +106,31 @@ resource "aws_eks_node_group" "this" {
 
   tags = local.tags
 }
+
+resource "aws_secretsmanager_secret" "certificate_secret" {
+  name        = "${var.project_name}-${var.environment}-certificate"
+  description = "Secret for storing TLS certificate for ${var.project_name} in ${var.environment}"
+
+  tags = local.tags
+}
+
+resource "aws_secretsmanager_secret_policy" "certificate_secret_policy" {
+  secret_arn = aws_secretsmanager_secret.certificate_secret.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_iam_role.eks_node_lab_role.arn
+        }
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}

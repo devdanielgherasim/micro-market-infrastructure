@@ -1,5 +1,5 @@
 location     = "westeurope"
-project_name = "microservicesdaniel1691715"
+project_name = "microservices1691712"
 environment  = "dev"
 acr_sku_name = "Basic"
 aks_vm_size  = "Standard_F4s_v2"

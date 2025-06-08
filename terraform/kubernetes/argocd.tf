@@ -49,10 +49,11 @@ resource "helm_release" "argocd" {
   namespace         = kubernetes_namespace_v1.argocd.metadata[0].name
   depends_on        = [helm_release.cert_manager]
   create_namespace  = false
-  values            = [templatefile("${path.root}/configs/argocd_config_updated.yaml", {
+  values            = [templatefile("${path.root}/configs/argocd_config.yaml", {
     ARGOCD_URL = "https://${local.argocd_domain}/argocd",
     KEYCLOAK_ISSUER = "https://${local.argocd_domain}/auth/realms/microservices",
-    DOMAIN = local.argocd_domain
+    DOMAIN = local.argocd_domain,
+    CLUSTER_ISSUER = var.cluster_issuer
   })]
   timeout           = 200
 
