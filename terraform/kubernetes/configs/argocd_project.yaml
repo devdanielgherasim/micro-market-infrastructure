@@ -6,13 +6,58 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
+  description: "Project for infrastructure applications"
+
+  # Source repositories
+  sourceRepos:
+    - "https://gitlab.com/microservices1691715/deployment.git"
+    - "https://gitlab.com/microservices1691715/*"
+
+  # Destination clusters and namespaces
+  destinations:
+    - namespace: "argocd"
+      server: https://kubernetes.default.svc
+    - namespace: "cert-manager"
+      server: https://kubernetes.default.svc
+    - namespace: "ingress-nginx"
+      server: https://kubernetes.default.svc
+    - namespace: "monitoring"
+      server: https://kubernetes.default.svc
+    - namespace: "kube-system"
+      server: https://kubernetes.default.svc
+
+  # Allow specific cluster-scoped resources
   clusterResourceWhitelist:
+    - group: "cert-manager.io"
+      kind: "ClusterIssuer"
+    - group: "networking.k8s.io"
+      kind: "IngressClass"
+    - group: "apiextensions.k8s.io"
+      kind: "CustomResourceDefinition"
+    - group: "storage.k8s.io"
+      kind: "StorageClass"
+    - group: "rbac.authorization.k8s.io"
+      kind: "*"
+
+  # Allow all namespace-scoped resources
+  namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
-  description: "Project for infrastructure applications"
-  sourceRepos:
-    - "*"
-  destinations:
-    - namespace: "*"
-      name: "*"
-      server: https://kubernetes.default.svc
+
+  # Warn about orphaned resources
+  orphanedResources:
+    warn: true
+    ignore:
+      - group: ""
+        kind: "ConfigMap"
+        name: "kube-root-ca.crt"
+
+  # Admin role for project management
+  roles:
+    - name: admin
+      description: Admin role for infrastructure project
+      policies:
+        - p, proj:infrastructure:admin, applications, *, infrastructure/*, allow
+        - p, proj:infrastructure:admin, repositories, *, *, allow
+      groups:
+        - infrastructure-admins

@@ -9,7 +9,7 @@ resource "azurerm_container_registry" "this" {
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   sku                 = var.acr_sku_name
-  admin_enabled       = true
+  admin_enabled       = false
   tags                = local.tags
 }
 
@@ -18,21 +18,25 @@ resource "azurerm_kubernetes_cluster" "this" {
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   dns_prefix          = "k8s-${var.project_name}-${var.environment}"
-  kubernetes_version  = "1.32.4"
+  kubernetes_version  = var.kubernetes_version
   node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
 
   default_node_pool {
-    name            = "default"
-    node_count      = var.node_count
-    vm_size         = var.aks_vm_size
-    os_disk_size_gb = 30
+    name                = "default"
+    node_count          = var.node_count
+    vm_size             = var.aks_vm_size
+    os_disk_size_gb     = 50
+
+    tags = merge(var.tags, {
+      NodePool = "default"
+    })
   }
 
   identity {
     type = "SystemAssigned"
   }
 
-  tags = var.tags
+  tags = local.tags
   depends_on = [azurerm_container_registry.this]
 }
 

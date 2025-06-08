@@ -41,7 +41,14 @@ variable "aks_vm_size" {
 variable "tags" {
   type = map(string)
 }
+
 variable "node_count" {
   type    = number
   default = 1
+}
+
+variable "kubernetes_version" {
+  type        = string
+  description = "Kubernetes version for the AKS cluster"
+  default     = "1.32.4"
 }
