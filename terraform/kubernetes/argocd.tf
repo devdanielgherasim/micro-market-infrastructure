@@ -66,7 +66,6 @@ resource "helm_release" "argocd" {
     value = "true"
   }
 
-
   set_sensitive {
     name  = "configs.credentialTemplates.https-creds.password"
     value = var.gitlab_token
