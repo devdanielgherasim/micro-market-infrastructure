@@ -1,43 +1,57 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
-  name: infrastructure-app-of-apps
+  name: microservices
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io/finalizer
 spec:
-  project: infrastructure
-  source:
-    repoURL: https://gitlab.com/microservices1691715/deployment.git
-    targetRevision: main
-    path: "applications/dev/"
-    directory:
-      recurse: true
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: "argocd"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - Validate=true
-    retry:
-      limit: 3
-      backoff:
-        duration: 10s
-        maxDuration: 2m
-  revisionHistoryLimit: 5
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      jsonPointers:
-        - /spec/replicas
-    - group: core
-      kind: Service
-      jsonPointers:
-        - /spec/clusterIP
-        - /spec/clusterIPs
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - env: dev
+                  registry: acrmicroservices1691715dev.azurecr.io
+                  provider: azure
+          - list:
+              elements:
+                - name: catalog
+                  path: catalog
+                - name: audit
+                  path: audit
+                - name: orders
+                  path: orders
+                - name: administrator
+                  path: administrator
+                - name: micro-market
+                  path: micro-market
+  template:
+    metadata:
+      name: '{{name}}-{{env}}'
+      namespace: argocd
+      labels:
+        environment: '{{env}}'
+        provider: '{{provider}}'
+    spec:
+      project: microservices
+      source:
+        repoURL: https://gitlab.com/microservices1691715/deployment.git
+        targetRevision: HEAD
+        path: '{{path}}'
+        helm:
+          valueFiles:
+            - values.yaml
+            - environments/{{env}}-values.yaml
+          parameters:
+            - name: global.environment
+              value: '{{env}}'
+            - name: image.repository
+              value: '{{registry}}/microservices1691715/{{name}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'microservices'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
