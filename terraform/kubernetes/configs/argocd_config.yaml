@@ -151,7 +151,10 @@ server:
       cpu: 100m
       memory: 128Mi
   certificate:
-    enabled: false
+    enabled: true
+    issuer:
+      kind: "ClusterIssuer"
+      name: "letsencrypt-production-cluster-issuer"
   ingress:
     enabled: true
     ingressClassName: "nginx"
@@ -166,12 +169,12 @@ server:
     hosts:
       - "${DOMAIN}"
     annotations:
-      cert-manager.io/cluster-issuer: "${CLUSTER_ISSUER}"
+      cert-manager.io/cluster-issuer: "letsencrypt-production-cluster-issuer"
       acme.cert-manager.io/http01-edit-in-place: "true"
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
       nginx.ingress.kubernetes.io/use-regex: "true"
       nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
 
 controller:
   replicas: 1
