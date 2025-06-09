@@ -53,7 +53,6 @@ resource "helm_release" "argocd" {
     ARGOCD_URL = "https://${local.argocd_domain}/argocd",
     KEYCLOAK_ISSUER = "https://${local.argocd_domain}/auth/realms/microservices",
     DOMAIN = local.argocd_domain,
-    CLUSTER_ISSUER = var.cluster_issuer
   })]
   timeout           = 200
 
@@ -67,10 +66,6 @@ resource "helm_release" "argocd" {
     value = "true"
   }
 
-  set {
-    name  = "server.certificate.issuer.name"
-    value = var.cluster_issuer
-  }
 
   set_sensitive {
     name  = "configs.credentialTemplates.https-creds.password"
