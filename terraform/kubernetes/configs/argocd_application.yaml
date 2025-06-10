@@ -10,7 +10,7 @@ spec:
           - list:
               elements:
                 - env: dev
-                  registry: acrmicroservices1691715dev.azurecr.io
+                  registry: acrmicroservices1691716dev.azurecr.io
                   provider: azure
           - list:
               elements:
@@ -20,10 +20,8 @@ spec:
                   path: audit
                 - name: orders
                   path: orders
-                - name: administrator
-                  path: administrator
-                - name: micro-market
-                  path: micro-market
+                - name: micro-market-frontend
+                  path: micro-market-frontend
   template:
     metadata:
       name: '{{name}}-{{env}}'
@@ -45,7 +43,13 @@ spec:
             - name: global.environment
               value: '{{env}}'
             - name: image.repository
-              value: '{{registry}}/microservices1691715/{{name}}'
+              value: '{{registry}}/microservices1691716/{{name}}'
+            - name: global.domain
+              value: 'microservices1691716.westeurope.cloudapp.azure.com'
+            - name: global.keycloak.url
+              value: 'https://microservices1691716.westeurope.cloudapp.azure.com/auth'
+            - name: global.keycloak.realm
+              value: 'microservices'
       destination:
         server: https://kubernetes.default.svc
         namespace: 'microservices'
