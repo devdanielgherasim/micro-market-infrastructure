@@ -451,8 +451,7 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
         {
           "clientId": "micro-market-frontend",
           "enabled": true,
-          "clientAuthenticatorType": "client-secret",
-          "secret": "${random_password.keycloak_admin_password.result}",
+          "clientAuthenticatorType": "none",
           "redirectUris": [
             "https://${local.current_domain}/*"
           ],
@@ -468,7 +467,7 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
           "standardFlowEnabled": true,
           "implicitFlowEnabled": false,
           "serviceAccountsEnabled": false,
-          "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
+          "defaultClientScopes": ["web-origins", "profile", "roles", "email", "account"],
           "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
         },
         {
