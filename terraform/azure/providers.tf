@@ -4,15 +4,15 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "=4.31.0"
+      version = "=4.32.0"
     }
   }
 
   backend "azurerm" {
-    resource_group_name="rg-infrastructure"
-    storage_account_name="terraformmicrostate"
-    container_name="tfstate"
-    key="terraform.tfstate"
+    resource_group_name  = "rg-infrastructure"
+    storage_account_name = "terraformmicrostate"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
   }
 }
 
