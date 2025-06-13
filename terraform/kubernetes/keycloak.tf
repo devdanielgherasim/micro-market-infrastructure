@@ -46,12 +46,12 @@ resource "kubernetes_secret_v1" "keycloak_admin_secret" {
 }
 
 resource "helm_release" "keycloak" {
-  name             = "keycloak"
-  repository       = "https://charts.bitnami.com/bitnami"
-  chart            = "keycloak"
-  version          = "22.0.0"
-  namespace        = kubernetes_namespace_v1.keycloak.metadata[0].name
-  create_namespace = false
+  name              = "keycloak"
+  repository        = "https://charts.bitnami.com/bitnami"
+  chart             = "keycloak"
+  version           = "22.0.1"
+  namespace         = kubernetes_namespace_v1.keycloak.metadata[0].name
+  create_namespace  = false
   dependency_update = true
   timeout           = 300
 
@@ -123,9 +123,9 @@ resource "helm_release" "keycloak" {
             name: keycloak-admin
             key: password
       - name: KC_SPI_EVENTS_LISTENER_JBOSS_LOGGING_SUCCESS_LEVEL
-        value: "info"
+        value: "debug"
       - name: KC_SPI_EVENTS_LISTENER_JBOSS_LOGGING_ERROR_LEVEL
-        value: "warn"
+        value: "debug"
       - name: KC_FEATURES
         value: "token-exchange,admin-fine-grained-authz"
       - name: KC_HOSTNAME
@@ -137,11 +137,13 @@ resource "helm_release" "keycloak" {
       - name: KC_HTTP_ENABLED
         value: "true"
       - name: KEYCLOAK_EXTRA_ARGS
-        value: "--import-realm"
+        value: "--import-realm --spi-realm-import-strategy=OVERWRITE_EXISTING"
       - name: KC_HEALTH_ENABLED
         value: "true"
       - name: KC_METRICS_ENABLED
         value: "true"
+      - name: KC_LOG_LEVEL
+        value: "debug"
 
     # Database configuration
     externalDatabase:
@@ -237,7 +239,7 @@ resource "helm_release" "keycloak" {
     # Logging configuration
     logging:
       output: default
-      level: INFO
+      level: DEBUG
 
     # TLS configuration
     tls:
@@ -284,13 +286,13 @@ resource "kubernetes_ingress_v1" "ingress_keycloak" {
     name      = "keycloak-ingress"
     namespace = kubernetes_namespace_v1.keycloak.metadata[0].name
     annotations = {
-      "cert-manager.io/cluster-issuer"                 = var.cluster_issuer
-      "acme.cert-manager.io/http01-edit-in-place"      = "true"
-      "kubernetes.io/ingress.class"                    = "nginx"
-      "nginx.ingress.kubernetes.io/proxy-body-size"    = "20m"
-      "nginx.ingress.kubernetes.io/force-ssl-redirect" = "true"
-      "nginx.ingress.kubernetes.io/proxy-buffer-size"  = "128k"
-      "nginx.ingress.kubernetes.io/proxy-buffers"      = "4 256k"
+      "cert-manager.io/cluster-issuer"                      = var.cluster_issuer
+      "acme.cert-manager.io/http01-edit-in-place"           = "true"
+      "kubernetes.io/ingress.class"                         = "nginx"
+      "nginx.ingress.kubernetes.io/proxy-body-size"         = "20m"
+      "nginx.ingress.kubernetes.io/force-ssl-redirect"      = "true"
+      "nginx.ingress.kubernetes.io/proxy-buffer-size"       = "128k"
+      "nginx.ingress.kubernetes.io/proxy-buffers"           = "4 256k"
       "nginx.ingress.kubernetes.io/proxy-busy-buffers-size" = "256k"
     }
   }
@@ -329,7 +331,7 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
   }
 
   data = {
-    "master-realm.json" = <<-EOT
+    "master-realm.json"        = <<-EOT
     {
       "realm": "master",
       "enabled": true,
@@ -435,10 +437,49 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
           "firstName": "Administrator",
           "lastName": "User",
           "email": "admin@microservices.com",
+          "createdTimestamp": 1625097600000,
           "credentials": [
             {
               "type": "password",
               "value": "${random_password.keycloak_admin_password.result}",
+              "temporary": false
+            }
+          ],
+          "groups": ["admin"],
+          "realmRoles": ["admin"],
+          "clientRoles": {}
+        },
+        {
+          "username": "client",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Client",
+          "lastName": "User",
+          "email": "client@microservice.com",
+          "createdTimestamp": 1625097600000,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "client",
+              "temporary": false
+            }
+          ],
+          "groups": ["user"],
+          "realmRoles": ["user"],
+          "clientRoles": {}
+        },
+        {
+          "username": "administrator",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Administrator",
+          "lastName": "User",
+          "email": "admininistrator@microservice.com",
+          "createdTimestamp": 1625097600000,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admininistrator",
               "temporary": false
             }
           ],
@@ -467,7 +508,7 @@ resource "kubernetes_config_map_v1" "keycloak_realm_config" {
           "standardFlowEnabled": true,
           "implicitFlowEnabled": false,
           "serviceAccountsEnabled": false,
-          "defaultClientScopes": ["web-origins", "profile", "roles", "email", "account"],
+          "defaultClientScopes": ["web-origins", "profile", "roles", "email", "account", "account-console"],
           "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
         },
         {
