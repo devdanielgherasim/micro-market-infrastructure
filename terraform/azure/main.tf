@@ -22,10 +22,10 @@ resource "azurerm_kubernetes_cluster" "this" {
   node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
 
   default_node_pool {
-    name                = "default"
-    node_count          = var.node_count
-    vm_size             = var.aks_vm_size
-    os_disk_size_gb     = 50
+    name            = "default"
+    node_count      = var.node_count
+    vm_size         = var.aks_vm_size
+    os_disk_size_gb = 50
 
     tags = merge(var.tags, {
       NodePool = "default"
