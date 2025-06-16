@@ -70,8 +70,8 @@ validate_infrastructure:
     - cd terraform/${CLOUD_PROVIDER}
     - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
-    - 'echo "=== [DEBUG] Starting terraform init with reconfigure option ==="'
-    - terraform init -reconfigure
+    - 'echo "=== [DEBUG] Starting terraform init ==="'
+    - terraform init
     - 'echo "=== [DEBUG] Terraform init completed ==="'
     - 'echo "=== [DEBUG] Starting terraform validate ==="'
     - terraform validate
