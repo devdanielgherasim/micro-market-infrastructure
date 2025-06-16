@@ -26,9 +26,7 @@ variables:
     policy: pull-push
 
 .before_script_common: &before_script_common
-  - echo "Starting job in $CI_JOB_STAGE stage for cloud provider: ${CLOUD_PROVIDER}"
   - WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
-  - echo "Using workspace: $WORKSPACE"
   - |
     # Set up provider-specific environment variables
     if [ "${CLOUD_PROVIDER}" = "aws" ]; then
