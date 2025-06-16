@@ -30,6 +30,8 @@ variables:
   - 'echo "=== [DEBUG] Running on runner: $CI_RUNNER_DESCRIPTION ==="'
   - 'echo "=== [DEBUG] Cloud provider: ${CLOUD_PROVIDER} ==="'
   - 'echo "=== [DEBUG] Project directory: $CI_PROJECT_DIR ==="'
+  - 'echo "=== [DEBUG] Creating plugin cache directory: $TF_PLUGIN_CACHE_DIR ==="'
+  - mkdir -p $TF_PLUGIN_CACHE_DIR
   - WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
   - 'echo "=== [DEBUG] Using workspace: $WORKSPACE derived from branch: ${CI_COMMIT_REF_NAME} ==="'
   - 'echo "=== [DEBUG] Setting up provider-specific environment variables ==="'
