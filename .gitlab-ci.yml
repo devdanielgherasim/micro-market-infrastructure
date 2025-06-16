@@ -26,27 +26,41 @@ variables:
     policy: pull-push
 
 .before_script_common: &before_script_common
+  - 'echo "=== [DEBUG] Pipeline started for job: $CI_JOB_NAME in stage: $CI_JOB_STAGE ==="'
+  - 'echo "=== [DEBUG] Running on runner: $CI_RUNNER_DESCRIPTION ==="'
+  - 'echo "=== [DEBUG] Cloud provider: ${CLOUD_PROVIDER} ==="'
+  - 'echo "=== [DEBUG] Project directory: $CI_PROJECT_DIR ==="'
   - WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
+  - 'echo "=== [DEBUG] Using workspace: $WORKSPACE derived from branch: ${CI_COMMIT_REF_NAME} ==="'
+  - 'echo "=== [DEBUG] Setting up provider-specific environment variables ==="'
   - |
     # Set up provider-specific environment variables
     if [ "${CLOUD_PROVIDER}" = "aws" ]; then
+      echo "=== [DEBUG] Configuring AWS provider ==="
       export TF_VAR_access_key=$AWS_ACCESS_KEY_ID
       export TF_VAR_secret_key=$AWS_SECRET_ACCESS_KEY
       export TF_VAR_session_token=$AWS_SESSION_TOKEN
+      echo "=== [DEBUG] AWS environment variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "azure" ]; then
+      echo "=== [DEBUG] Configuring Azure provider ==="
       export TF_VAR_client_id=$ARM_CLIENT_ID
       export TF_VAR_client_secret=$ARM_CLIENT_SECRET
       export TF_VAR_tenant_id=$ARM_TENANT_ID
       export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+      echo "=== [DEBUG] Azure environment variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "gcp" ]; then
+      echo "=== [DEBUG] Configuring GCP provider ==="
       echo "$GCP_SERVICE_ACCOUNT_KEY" > gcp-credentials.json
       export GOOGLE_APPLICATION_CREDENTIALS="$CI_PROJECT_DIR/gcp-credentials.json"
       export TF_VAR_credentials_file="$CI_PROJECT_DIR/gcp-credentials.json"
       export TF_VAR_project_id=$GCP_PROJECT_ID
+      echo "=== [DEBUG] GCP environment variables set ==="
+      echo "=== [DEBUG] GCP credentials file created at: $GOOGLE_APPLICATION_CREDENTIALS ==="
     else
-      echo "Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp"
+      echo "=== [DEBUG] ERROR: Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp ==="
       exit 1
     fi
+  - 'echo "=== [DEBUG] Common before_script completed ==="'
 
 validate_infrastructure:
   stage: validate
@@ -54,10 +68,18 @@ validate_infrastructure:
   before_script:
     - *before_script_common
     - cd terraform/${CLOUD_PROVIDER}
+    - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
+    - 'echo "=== [DEBUG] Starting terraform init with reconfigure option ==="'
     - terraform init -reconfigure
+    - 'echo "=== [DEBUG] Terraform init completed ==="'
+    - 'echo "=== [DEBUG] Starting terraform validate ==="'
     - terraform validate
+    - 'echo "=== [DEBUG] Terraform validate completed ==="'
+    - 'echo "=== [DEBUG] Starting terraform fmt check ==="'
     - terraform fmt -check -diff
+    - 'echo "=== [DEBUG] Terraform fmt check completed ==="'
+    - 'echo "=== [DEBUG] Validate infrastructure job completed successfully ==="'
 
 plan_infrastructure:
   stage: plan
@@ -65,15 +87,28 @@ plan_infrastructure:
   before_script:
     - *before_script_common
     - cd terraform/${CLOUD_PROVIDER}
+    - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
+    - 'echo "=== [DEBUG] Starting terraform init ==="'
     - terraform init
+    - 'echo "=== [DEBUG] Terraform init completed ==="'
+    - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
     - |
       if ! terraform workspace list | grep -q "$WORKSPACE"; then
+        echo "=== [DEBUG] Creating new workspace: $WORKSPACE ==="
         terraform workspace new "$WORKSPACE"
+      else
+        echo "=== [DEBUG] Workspace $WORKSPACE already exists ==="
       fi
+      echo "=== [DEBUG] Selecting workspace: $WORKSPACE ==="
       terraform workspace select "$WORKSPACE"
+      echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
+    - 'echo "=== [DEBUG] Starting terraform plan ==="'
     - terraform plan --var-file=./tfvars_files/dev.tfvars -out=tfplan
+    - 'echo "=== [DEBUG] Terraform plan completed ==="'
+    - 'echo "=== [DEBUG] Converting plan to JSON ==="'
     - terraform show -json tfplan > plan.json
+    - 'echo "=== [DEBUG] Plan infrastructure job completed successfully ==="'
   artifacts:
     paths:
       - terraform/${CLOUD_PROVIDER}/tfplan
@@ -87,11 +122,25 @@ apply_infrastructure:
   before_script:
     - *before_script_common
     - cd terraform/${CLOUD_PROVIDER}
+    - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
+    - 'echo "=== [DEBUG] Starting terraform init ==="'
     - terraform init
+    - 'echo "=== [DEBUG] Terraform init completed ==="'
+    - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
     - |
-      terraform workspace select "$WORKSPACE" || terraform workspace new "$WORKSPACE"
+      if ! terraform workspace list | grep -q "$WORKSPACE"; then
+        echo "=== [DEBUG] Creating new workspace: $WORKSPACE ==="
+        terraform workspace new "$WORKSPACE"
+      else
+        echo "=== [DEBUG] Selecting workspace: $WORKSPACE ==="
+        terraform workspace select "$WORKSPACE"
+      fi
+      echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
+    - 'echo "=== [DEBUG] Starting terraform apply ==="'
     - terraform apply -auto-approve tfplan
+    - 'echo "=== [DEBUG] Terraform apply completed successfully ==="'
+    - 'echo "=== [DEBUG] Infrastructure deployment completed for provider: ${CLOUD_PROVIDER} ==="'
   dependencies:
     - plan_infrastructure
   needs: [ plan_infrastructure ]
