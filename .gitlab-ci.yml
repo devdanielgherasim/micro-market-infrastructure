@@ -27,34 +27,28 @@ variables:
 
 .before_script_common: &before_script_common
   - echo "Starting job in $CI_JOB_STAGE stage for cloud provider: ${CLOUD_PROVIDER}"
+  - WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
+  - echo "Using workspace: $WORKSPACE"
   - |
-    # Set up workspace based on branch name
-    WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
-    echo "Using workspace: $WORKSPACE"
-
-    case "${CLOUD_PROVIDER}" in
-      aws)
-        export TF_VAR_access_key=$AWS_ACCESS_KEY_ID
-        export TF_VAR_secret_key=$AWS_SECRET_ACCESS_KEY
-        export TF_VAR_session_token=$AWS_SESSION_TOKEN
-        ;;
-      azure)
-        export TF_VAR_client_id=$ARM_CLIENT_ID
-        export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-        export TF_VAR_tenant_id=$ARM_TENANT_ID
-        export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
-        ;;
-      gcp)
-        echo "$GCP_SERVICE_ACCOUNT_KEY" > gcp-credentials.json
-        export GOOGLE_APPLICATION_CREDENTIALS="$CI_PROJECT_DIR/gcp-credentials.json"
-        export TF_VAR_credentials_file="$CI_PROJECT_DIR/gcp-credentials.json"
-        export TF_VAR_project_id=$GCP_PROJECT_ID
-        ;;
-      *)
-        echo "Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp"
-        exit 1
-        ;;
-    esac
+    # Set up provider-specific environment variables
+    if [ "${CLOUD_PROVIDER}" = "aws" ]; then
+      export TF_VAR_access_key=$AWS_ACCESS_KEY_ID
+      export TF_VAR_secret_key=$AWS_SECRET_ACCESS_KEY
+      export TF_VAR_session_token=$AWS_SESSION_TOKEN
+    elif [ "${CLOUD_PROVIDER}" = "azure" ]; then
+      export TF_VAR_client_id=$ARM_CLIENT_ID
+      export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+      export TF_VAR_tenant_id=$ARM_TENANT_ID
+      export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+    elif [ "${CLOUD_PROVIDER}" = "gcp" ]; then
+      echo "$GCP_SERVICE_ACCOUNT_KEY" > gcp-credentials.json
+      export GOOGLE_APPLICATION_CREDENTIALS="$CI_PROJECT_DIR/gcp-credentials.json"
+      export TF_VAR_credentials_file="$CI_PROJECT_DIR/gcp-credentials.json"
+      export TF_VAR_project_id=$GCP_PROJECT_ID
+    else
+      echo "Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp"
+      exit 1
+    fi
 
 validate_infrastructure:
   stage: validate
