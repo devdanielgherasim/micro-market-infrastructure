@@ -1,116 +1,105 @@
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
-# Multi-Stage GitLab CI/CD for Azure + Kubernetes Terraform
-# This pipeline ensures Azure infrastructure is deployed before Kubernetes addons.
-# It uses two separate Terraform projects and remote state for dependency management.
+# Multi-Stage GitLab CI/CD for Cloud Infrastructure + Kubernetes Terraform
+# This pipeline deploys infrastructure to the specified cloud provider (AWS, Azure, or GCP)
+# based on the CLOUD_PROVIDER variable.
+# It uses separate Terraform projects and remote state for dependency management.
 
 stages:
   - validate
-  - azure
-  - kubernetes
+  - plan
+  - apply
 
 variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
+  CLOUD_PROVIDER: ${CLOUD_PROVIDER:-azure}
 
 .terraform-cache: &terraform-cache
   cache:
-    key: ${CI_COMMIT_REF_SLUG}
+    key: ${CI_COMMIT_REF_SLUG}-${CLOUD_PROVIDER}
     paths:
-      - terraform/azure/.terraform
+      - terraform/${CLOUD_PROVIDER}/.terraform
       - terraform/kubernetes/.terraform
       - .terraform.d/plugin-cache
     policy: pull-push
 
 .before_script_common: &before_script_common
-  - echo "Starting job in $CI_JOB_STAGE stage"
-  - export TF_VAR_client_id=$ARM_CLIENT_ID
-  - export TF_VAR_client_secret=$ARM_CLIENT_SECRET
-  - export TF_VAR_tenant_id=$ARM_TENANT_ID
-  - export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+  - echo "Starting job in $CI_JOB_STAGE stage for cloud provider: ${CLOUD_PROVIDER}"
+  - |
+    # Set up workspace based on branch name
+    WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
+    echo "Using workspace: $WORKSPACE"
 
-validate_azure:
+    case "${CLOUD_PROVIDER}" in
+      aws)
+        export TF_VAR_access_key=$AWS_ACCESS_KEY_ID
+        export TF_VAR_secret_key=$AWS_SECRET_ACCESS_KEY
+        export TF_VAR_session_token=$AWS_SESSION_TOKEN
+        ;;
+      azure)
+        export TF_VAR_client_id=$ARM_CLIENT_ID
+        export TF_VAR_client_secret=$ARM_CLIENT_SECRET
+        export TF_VAR_tenant_id=$ARM_TENANT_ID
+        export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+        ;;
+      gcp)
+        echo "$GCP_SERVICE_ACCOUNT_KEY" > gcp-credentials.json
+        export GOOGLE_APPLICATION_CREDENTIALS="$CI_PROJECT_DIR/gcp-credentials.json"
+        export TF_VAR_credentials_file="$CI_PROJECT_DIR/gcp-credentials.json"
+        export TF_VAR_project_id=$GCP_PROJECT_ID
+        ;;
+      *)
+        echo "Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp"
+        exit 1
+        ;;
+    esac
+
+validate_infrastructure:
   stage: validate
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd terraform/azure
+    - cd terraform/${CLOUD_PROVIDER}
   script:
     - terraform init -reconfigure
     - terraform validate
     - terraform fmt -check -diff
 
-validate_kubernetes:
-  stage: validate
+plan_infrastructure:
+  stage: plan
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd terraform/kubernetes
-  script:
-    - terraform init -reconfigure
-    - terraform validate
-    - terraform fmt -check -diff
-  needs: [ validate_azure ]
-
-plan_azure:
-  stage: azure
-  <<: *terraform-cache
-  before_script:
-    - *before_script_common
-    - cd terraform/azure
+    - cd terraform/${CLOUD_PROVIDER}
   script:
     - terraform init
-    - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
+    - |
+      if ! terraform workspace list | grep -q "$WORKSPACE"; then
+        terraform workspace new "$WORKSPACE"
+      fi
+      terraform workspace select "$WORKSPACE"
+    - terraform plan --var-file=./tfvars_files/dev.tfvars -out=tfplan
     - terraform show -json tfplan > plan.json
   artifacts:
     paths:
-      - terraform/azure/tfplan
-      - terraform/azure/plan.json
+      - terraform/${CLOUD_PROVIDER}/tfplan
+      - terraform/${CLOUD_PROVIDER}/plan.json
     reports:
-      terraform: terraform/azure/plan.json
+      terraform: terraform/${CLOUD_PROVIDER}/plan.json
 
-apply_azure:
-  stage: azure
+apply_infrastructure:
+  stage: apply
   <<: *terraform-cache
   before_script:
     - *before_script_common
-    - cd terraform/azure
+    - cd terraform/${CLOUD_PROVIDER}
   script:
     - terraform init
+    - |
+      terraform workspace select "$WORKSPACE" || terraform workspace new "$WORKSPACE"
     - terraform apply -auto-approve tfplan
-    - PUBLIC_IP_NAME=$(az network public-ip list --resource-group rg-microservices1691715-dev-aks --query "[?contains(name, 'kubernetes-')].name" -o tsv)
-    - az network public-ip update --resource-group rg-$CI_PROJECT_NAMESPACE-dev-aks --name $PUBLIC_IP_NAME --dns-name $CI_PROJECT_NAMESPACE
   dependencies:
-    - plan_azure
-  needs: [ plan_azure ]
-# plan_kubernetes:
-#   stage: kubernetes0
-#   <<: *terraform-cache
-#   before_script:
-#     - *before_script_common
-#     - cd terraform/kubernetes
-#   script:
-#     - terraform init
-#     - terraform plan --var-file=../tfvars_files/dev.tfvars -out=tfplan
-#     - terraform show -json tfplan > plan.json
-#   artifacts:
-#     paths:
-#       - terraform/kubernetes/tfplan
-#       - terraform/kubernetes/plan.json
-#     reports:
-#       terraform: terraform/kubernetes/plan.json
-#   needs: [validate_kubernetes, apply_azure]
-
-# apply_kubernetes:
-#   stage: kubernetes
-#   <<: *terraform-cache
-#   before_script:
-#     - *before_script_common
-#     - cd terraform/kubernetes
-#   script:
-#     - terraform init
-#     - terraform apply -auto-approve tfplan
-#   dependencies:
-#     - plan_kubernetes
-#   needs: [plan_kubernetes]
+    - plan_infrastructure
+  needs: [ plan_infrastructure ]
