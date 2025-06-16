@@ -36,7 +36,7 @@ resource "azurerm_kubernetes_cluster" "this" {
     type = "SystemAssigned"
   }
 
-  tags = local.tags
+  tags       = local.tags
   depends_on = [azurerm_container_registry.this]
 }
 
