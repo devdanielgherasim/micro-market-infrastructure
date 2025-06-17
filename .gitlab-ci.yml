@@ -1,10 +1,5 @@
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
-# Multi-Stage GitLab CI/CD for Cloud Infrastructure + Kubernetes Terraform
-# This pipeline deploys infrastructure to the specified cloud provider (AWS, Azure, or GCP)
-# based on the CLOUD_PROVIDER variable.
-# It uses separate Terraform projects and remote state for dependency management.
-
 stages:
   - validate
   - plan
@@ -107,7 +102,7 @@ plan_infrastructure:
       terraform workspace select "$WORKSPACE"
       echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
     - 'echo "=== [DEBUG] Starting terraform plan ==="'
-    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -out=tfplan
+    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -var project_name="microservices1691719" -out=tfplan
     - 'echo "=== [DEBUG] Terraform plan completed ==="'
     - 'echo "=== [DEBUG] Converting plan to JSON ==="'
     - terraform show -json tfplan > plan.json
