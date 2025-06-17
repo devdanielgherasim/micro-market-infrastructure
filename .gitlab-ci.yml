@@ -102,7 +102,7 @@ plan_infrastructure:
       terraform workspace select "$WORKSPACE"
       echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
     - 'echo "=== [DEBUG] Starting terraform plan ==="'
-    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -var project_name="microservices1691719" -out=tfplan
+    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -var project_name="$PROJECT_NAMESPACE" -out=tfplan
     - 'echo "=== [DEBUG] Terraform plan completed ==="'
     - 'echo "=== [DEBUG] Converting plan to JSON ==="'
     - terraform show -json tfplan > plan.json
