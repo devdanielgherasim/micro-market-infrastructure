@@ -9,6 +9,7 @@ stages:
   - validate
   - plan
   - apply
+  - destroy
 
 variables:
   TF_IN_AUTOMATION: "true"
@@ -106,7 +107,7 @@ plan_infrastructure:
       terraform workspace select "$WORKSPACE"
       echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
     - 'echo "=== [DEBUG] Starting terraform plan ==="'
-    - terraform plan --var-file=./tfvars_files/dev.tfvars -out=tfplan
+    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -out=tfplan
     - 'echo "=== [DEBUG] Terraform plan completed ==="'
     - 'echo "=== [DEBUG] Converting plan to JSON ==="'
     - terraform show -json tfplan > plan.json
@@ -121,6 +122,7 @@ plan_infrastructure:
 apply_infrastructure:
   stage: apply
   <<: *terraform-cache
+  when: manual
   before_script:
     - *before_script_common
     - cd terraform/${CLOUD_PROVIDER}
@@ -146,3 +148,30 @@ apply_infrastructure:
   dependencies:
     - plan_infrastructure
   needs: [ plan_infrastructure ]
+
+destroy_infrastructure:
+  stage: destroy
+  <<: *terraform-cache
+  when: manual
+  before_script:
+    - *before_script_common
+    - cd terraform/${CLOUD_PROVIDER}
+    - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
+  script:
+    - 'echo "=== [DEBUG] Starting terraform init ==="'
+    - terraform init
+    - 'echo "=== [DEBUG] Terraform init completed ==="'
+    - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
+    - |
+      if ! terraform workspace list | grep -q "$WORKSPACE"; then
+        echo "=== [DEBUG] Error: Workspace $WORKSPACE does not exist. Cannot destroy non-existent workspace. ==="
+        exit 1
+      else
+        echo "=== [DEBUG] Selecting workspace: $WORKSPACE ==="
+        terraform workspace select "$WORKSPACE"
+      fi
+      echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
+    - 'echo "=== [DEBUG] Starting terraform destroy ==="'
+    - terraform destroy -auto-approve --var-file=./tfvars_files/$WORKSPACE.tfvars
+    - 'echo "=== [DEBUG] Terraform destroy completed successfully ==="'
+    - 'echo "=== [DEBUG] Infrastructure destroyed for provider: ${CLOUD_PROVIDER} ==="'
