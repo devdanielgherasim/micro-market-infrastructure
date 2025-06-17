@@ -1,12 +1,12 @@
 location     = "westeurope"
-project_name = "microservices1691719"
-environment  = "prod"
+project_name = "microservices1691718"
+environment  = "staging"
 acr_sku_name = "Basic"
 aks_vm_size  = "Standard_F4s_v2"
 
 tags = {
   ManagedBy   = "Terraform"
-  Environment = "Production"
+  Environment = "Staging"
   Project     = "Microservices"
   Owner       = "adriangherasim"
   CostCenter  = "adriangherasim1@gmail.com"
