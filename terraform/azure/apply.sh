@@ -1,11 +1,31 @@
 #!/bin/bash
 
+WORKSPACE="prod"
+PROJECT_NAMESPACE="microservices1691711"
+
+echo "=== [DEBUG] Configuring Azure provider ==="
+
+export TF_VAR_client_id=""
+export TF_VAR_client_secret=""
+export TF_VAR_tenant_id=""
+export TF_VAR_subscription_id=""
+
 terraform init
 
-terraform apply --var-file=./tfvars_files/dev.tfvars \
-  --var client_id="88376f43-c3ee-4be1-bd05-20c20128b666" \
-  --var client_secret="YgW8Q~c1koEgr-cvHgSnkCieYtYA2Pr~MFB6dbDu" \
-  --var tenant_id="607d63ca-9f36-4ad8-9f71-8b3efc392eb1" \
-  --var subscription_id="fa77afbb-f924-48ff-9fa3-5cd94bf4cb57"
+if ! terraform workspace list | grep -q "$WORKSPACE"; then
+  echo "=== [DEBUG] Creating new workspace: $WORKSPACE ==="
+  terraform workspace new "$WORKSPACE"
+else
+  echo "=== [DEBUG] Workspace $WORKSPACE already exists ==="
+fi
+echo "=== [DEBUG] Selecting workspace: $WORKSPACE ==="
+terraform workspace select "$WORKSPACE"
+echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
+
+terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -var project_name="$PROJECT_NAMESPACE" -out=tfplan
+
+terraform show -json tfplan > plan.json
+
+terraform apply tfplan
 
 # terraform force-unlock <LOCK_ID>
