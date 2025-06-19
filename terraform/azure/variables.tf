@@ -43,8 +43,21 @@ variable "tags" {
 }
 
 variable "node_count" {
-  type    = number
-  default = 1
+  type        = number
+  description = "Initial number of nodes in the node pool"
+  default     = 1
+}
+
+variable "min_node_count" {
+  type        = number
+  description = "Minimum number of nodes in the node pool when autoscaling"
+  default     = 1
+}
+
+variable "max_node_count" {
+  type        = number
+  description = "Maximum number of nodes in the node pool when autoscaling"
+  default     = 3
 }
 
 variable "kubernetes_version" {
