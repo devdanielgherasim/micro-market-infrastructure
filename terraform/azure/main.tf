@@ -23,12 +23,15 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   default_node_pool {
     name            = "default"
+    min_count       = var.min_node_count
+    max_count       = var.max_node_count
     node_count      = var.node_count
     vm_size         = var.aks_vm_size
     os_disk_size_gb = 50
+    auto_scaling_enabled = true
 
     tags = merge(var.tags, {
-      NodePool = "default"
+      NodePool =  "default"
     })
   }
 
@@ -41,7 +44,7 @@ resource "azurerm_kubernetes_cluster" "this" {
 }
 
 resource "azurerm_role_assignment" "this" {
-  principal_id                     = azurerm_kubernetes_cluster.this.identity[0].principal_id
+  principal_id                     = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
   role_definition_name             = "AcrPull"
   scope                            = azurerm_container_registry.this.id
   skip_service_principal_aad_check = true
