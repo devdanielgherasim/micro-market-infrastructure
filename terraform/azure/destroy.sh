@@ -2,7 +2,7 @@
 set -euo pipefail
 
 WORKSPACE="${WORKSPACE:-prod}"
-PROJECT_NAMESPACE="${PROJECT_NAMESPACE:-microservices1691715}"
+PROJECT_NAMESPACE="${PROJECT_NAMESPACE:-danielgherasim-microservices}"
 
 # Credentials must come from the environment (ARM_* preferred by azurerm,
 # TF_VAR_* consumed by this module's variables). Never hardcode them here.

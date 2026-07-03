@@ -5,7 +5,7 @@ resource "azurerm_resource_group" "this" {
 }
 
 resource "azurerm_container_registry" "this" {
-  name                = "acr${var.project_name}${var.environment}"
+  name                = "acr${replace(var.project_name, "-", "")}${var.environment}"
   resource_group_name = azurerm_resource_group.this.name
   location            = azurerm_resource_group.this.location
   sku                 = var.acr_sku_name
@@ -39,7 +39,7 @@ resource "azurerm_kubernetes_cluster" "this" {
     type = "SystemAssigned"
   }
 
-  tags = local.tags
+  tags       = local.tags
   depends_on = [azurerm_container_registry.this]
 }
 
