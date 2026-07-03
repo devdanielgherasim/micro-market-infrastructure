@@ -9,8 +9,8 @@ terraform {
   }
 
   backend "gcs" {
-    bucket="terraformmicroservicesstate"
-    prefix="terraform/environments/dev/state"
+    bucket = "terraformmicroservicesstate"
+    prefix = "terraform/environments/dev/state"
   }
 }
 
@@ -30,14 +30,12 @@ resource "google_artifact_registry_repository" "this" {
 
 
 resource "google_container_cluster" "this" {
-  name     = "gke-${var.project_name}-${var.environment}"
-  location = var.zone
-
-  project             = var.project_id
-  deletion_protection = false
-
+  name                     = "gke-${var.project_name}-${var.environment}"
+  location                 = var.zone
+  project                  = var.project_id
+  deletion_protection      = var.deletion_protection
   remove_default_node_pool = true
-  initial_node_count       = 1
+  initial_node_count       = var.node_count
 
   networking_mode = "VPC_NATIVE"
 
@@ -46,27 +44,23 @@ resource "google_container_cluster" "this" {
       allow_external_traffic = true
     }
   }
-
   node_config {
     disk_type = "pd-standard"
   }
-
   master_auth {
     client_certificate_config {
       issue_client_certificate = false
     }
   }
-
   logging_service    = "logging.googleapis.com/kubernetes"
   monitoring_service = "monitoring.googleapis.com/kubernetes"
-
-  resource_labels = var.labels
+  resource_labels    = var.labels
 }
 
 resource "google_container_node_pool" "primary_nodes" {
   name       = "primary-node-pool"
   cluster    = google_container_cluster.this.name
-  location = var.zone
+  location   = var.zone
   node_count = var.node_count
 
   node_config {
@@ -81,7 +75,7 @@ resource "google_container_node_pool" "primary_nodes" {
     disk_type    = var.disk_type
 
     labels = var.labels
-    tags   = ["gke-node", "${var.project_name}-${var.environment}"]
+    tags = ["gke-node", "${var.project_name}-${var.environment}"]
   }
 
 
@@ -137,7 +131,7 @@ resource "google_secret_manager_secret_iam_binding" "certificate_secret_binding"
   project   = var.project_id
   secret_id = google_secret_manager_secret.certificate_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  members   = [
+  members = [
     "serviceAccount:${google_service_account.gke_sa.email}"
   ]
 }

@@ -22,16 +22,16 @@ resource "azurerm_kubernetes_cluster" "this" {
   node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
 
   default_node_pool {
-    name            = "default"
-    min_count       = var.min_node_count
-    max_count       = var.max_node_count
-    node_count      = var.node_count
-    vm_size         = var.aks_vm_size
-    os_disk_size_gb = 50
+    name                 = "default"
+    min_count            = var.min_node_count
+    max_count            = var.max_node_count
+    node_count           = var.node_count
+    vm_size              = var.aks_vm_size
+    os_disk_size_gb      = 50
     auto_scaling_enabled = true
 
     tags = merge(var.tags, {
-      NodePool =  "default"
+      NodePool = "default"
     })
   }
 
@@ -39,7 +39,7 @@ resource "azurerm_kubernetes_cluster" "this" {
     type = "SystemAssigned"
   }
 
-  tags       = local.tags
+  tags = local.tags
   depends_on = [azurerm_container_registry.this]
 }
 

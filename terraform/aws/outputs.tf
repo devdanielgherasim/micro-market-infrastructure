@@ -15,12 +15,25 @@ output "eks_cluster_name" {
   value       = aws_eks_cluster.this.name
 }
 
-output "ecr_repository_url" {
-  description = "URL of the ECR repository"
-  value       = aws_ecr_repository.this.repository_url
+output "ecr_repository_urls" {
+  description = "ECR repository URLs keyed by application name"
+  value = {
+    for name, repository in aws_ecr_repository.application :
+    name => repository.repository_url
+  }
 }
 
 output "kubeconfig_command" {
   description = "Command to configure kubectl"
   value       = "aws eks update-kubeconfig --region ${var.region} --name ${aws_eks_cluster.this.name}"
+}
+
+output "aws_load_balancer_controller_role_arn" {
+  description = "IAM role ARN for AWS Load Balancer Controller IRSA"
+  value       = aws_iam_role.aws_load_balancer_controller.arn
+}
+
+output "external_secrets_role_arn" {
+  description = "IAM role ARN for External Secrets Operator IRSA"
+  value       = aws_iam_role.external_secrets.arn
 }

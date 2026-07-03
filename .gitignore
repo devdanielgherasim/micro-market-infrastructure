@@ -4,10 +4,12 @@ destroy.bat
 terraform/.terraform/*
 
 # Local .terraform directories
+# (.terraform.lock.hcl is intentionally NOT ignored — commit it per HashiCorp guidance)
 **/.terraform/*
 
 # Ignore variables files
 *.auto.tfvars
+*.tfvars.local
 
 .terraformrc
 
@@ -16,10 +18,29 @@ terraform/.terraform/*
 
 # Ignore environment-specific files
 .envrc
+.env
+.env.*
 
 # Ignore CLI configuration files
 terraform.rc
 /terraform/.terraform/**
 
-**/.tfstate
-**/.tfstate.backup
+# Terraform state and plans — never commit
+*.tfstate
+*.tfstate.*
+**/tfplan
+**/tfplan.*
+**/plan.json
+
+# Credential material — never commit
+**/*credentials*.json
+**/*service-account*.json
+**/gcp-credentials.json
+**/*sa-key*.json
+**/*-key.json
+i-binder-*.json
+*.pem
+*.p12
+*.pfx
+kubeconfig
+kubeconfig.*
