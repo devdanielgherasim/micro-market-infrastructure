@@ -24,7 +24,7 @@ variable "zone" {
 variable "project_name" {
   type        = string
   description = "The name of the project"
-  default     = "microservices1691715"
+  default     = "danielgherasim-microservices"
 }
 
 variable "environment" {
@@ -34,9 +34,9 @@ variable "environment" {
 }
 
 variable "labels" {
-  type = map(string)
+  type        = map(string)
   description = "Labels to apply to resources"
-  default = {}
+  default     = {}
 }
 
 variable "node_count" {

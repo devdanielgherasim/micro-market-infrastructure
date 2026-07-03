@@ -1,5 +1,5 @@
 terraform {
-  required_version = "=1.13.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     google = {
@@ -75,7 +75,7 @@ resource "google_container_node_pool" "primary_nodes" {
     disk_type    = var.disk_type
 
     labels = var.labels
-    tags = ["gke-node", "${var.project_name}-${var.environment}"]
+    tags   = ["gke-node", "${var.project_name}-${var.environment}"]
   }
 
 
