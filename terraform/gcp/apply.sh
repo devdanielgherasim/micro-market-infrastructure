@@ -1,11 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-export GOOGLE_APPLICATION_CREDENTIALS="../i-binder-461513-v8-40884e000270.json"
+WORKSPACE="${WORKSPACE:-dev}"
+PROJECT_NAMESPACE="${PROJECT_NAMESPACE:-danielgherasim-microservices}"
 
 terraform init
 
-terraform apply --var-file=./tfvars_files/dev.tfvars \
-  --var project_id="i-binder-461513-v8" \
-  --var credentials_file="../i-binder-461513-v8-40884e000270.json"
+if ! terraform workspace list | grep -q "$WORKSPACE"; then
+  terraform workspace new "$WORKSPACE"
+else
+  terraform workspace select "$WORKSPACE"
+fi
+
+terraform plan --var-file="./tfvars_files/$WORKSPACE.tfvars" -var project_name="$PROJECT_NAMESPACE" -out=tfplan
+terraform apply tfplan
+rm -f tfplan
 
 # terraform force-unlock <LOCK_ID>

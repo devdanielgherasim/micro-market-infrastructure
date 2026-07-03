@@ -36,18 +36,23 @@ Before you can use the Terraform scripts in this repository with a remote backen
 3. Enable versioning
 4. Click **SAVE**
 
-### 4. Create a Service Account for Terraform (if not already done)
+### 4. Configure Identity for Terraform
 
-1. Navigate to **IAM & Admin** > **Service Accounts**
-2. Click **CREATE SERVICE ACCOUNT**
-3. Name your service account (e.g., `terraform-admin`)
-4. Grant the following roles:
+Use user application-default credentials for local runs, or GitLab Workload Identity Federation for CI. Do not create or download long-lived service-account JSON keys.
+
+For a local operator identity, grant the following roles as needed:
    - Storage Admin (`roles/storage.admin`)
    - Compute Admin (`roles/compute.admin`)
    - Kubernetes Engine Admin (`roles/container.admin`)
    - Service Account User (`roles/iam.serviceAccountUser`)
-5. Click **DONE**
-6. Create and download a key for this service account (JSON format)
+   - Service Account Admin (`roles/iam.serviceAccountAdmin`)
+   - Secret Manager Admin (`roles/secretmanager.admin`)
+
+Then authenticate locally:
+
+```bash
+gcloud auth application-default login
+```
 
 ### 5. Enable Required APIs
 
@@ -59,23 +64,17 @@ Before you can use the Terraform scripts in this repository with a remote backen
    - IAM API
    - Cloud Resource Manager API
 
-## Updating the Scripts
+## Updating the Backend
 
-After setting up the GCS bucket and service account, you need to update the `apply.sh` and `destroy.sh` scripts with your specific configuration:
+After setting up the GCS bucket, initialize Terraform with your backend bucket and prefix:
 
-1. Open `apply.sh` and `destroy.sh` in a text editor
-2. Update the following lines with your actual values:
-   ```bash
-   terraform init -backend-config="bucket=YOUR_GCS_BUCKET_NAME" \
-                  -backend-config="prefix=terraform/state" \
-                  -backend-config="credentials=path/to/your/credentials.json"
-   ```
-3. Update the project ID and credentials file path:
-   ```bash
-   terraform apply --var-file=./tfvars_files/dev.tfvars \
-                   --var project_id="YOUR_GCP_PROJECT_ID" \
-                   --var credentials_file="path/to/your/credentials.json"
-   ```
+```bash
+terraform init \
+  -backend-config="bucket=YOUR_GCS_BUCKET_NAME" \
+  -backend-config="prefix=terraform/environments/dev/state"
+```
+
+The provider uses Google application-default credentials from `gcloud auth application-default login` locally, or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a Workload Identity Federation credential configuration in CI.
 
 ## Using the Scripts
 
@@ -103,7 +102,7 @@ After updating the scripts with your configuration:
 
 1. **Permission Denied**: Ensure your service account has the necessary permissions.
 2. **Bucket Not Found**: Verify the bucket name is correct and the bucket exists.
-3. **Invalid Credentials**: Make sure the path to your credentials file is correct.
+3. **Invalid Credentials**: Re-run `gcloud auth application-default login` locally, or check the GitLab Workload Identity Federation provider and service account variables in CI.
 4. **API Not Enabled**: Ensure all required APIs are enabled in your GCP project.
 
 For more information, see the [Terraform GCS Backend Documentation](https://www.terraform.io/docs/language/settings/backends/gcs.html).

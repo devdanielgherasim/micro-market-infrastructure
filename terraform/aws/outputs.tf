@@ -37,3 +37,14 @@ output "external_secrets_role_arn" {
   description = "IAM role ARN for External Secrets Operator IRSA"
   value       = aws_iam_role.external_secrets.arn
 }
+
+output "secret_prefix" {
+  description = "AWS Secrets Manager prefix containing platform and application secrets"
+  value       = local.secret_prefix
+}
+
+output "argocd_oidc_client_secret" {
+  description = "Argo CD OIDC client secret seeded into cloud secret managers"
+  value       = random_password.argocd_client.result
+  sensitive   = true
+}

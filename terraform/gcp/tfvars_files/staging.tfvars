@@ -2,9 +2,8 @@ project_id = "i-binder-461513-v8"
 region     = "europe-central2"
 zone       = "europe-central2-a"
 
-project_name     = "danielgherasim-microservices"
-environment      = "staging"
-credentials_file = "../i-binder-461513-v8-40884e000270.json"
+project_name = "danielgherasim-microservices"
+environment  = "staging"
 
 labels = {
   managedby   = "terraform"

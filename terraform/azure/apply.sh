@@ -4,12 +4,15 @@ set -euo pipefail
 WORKSPACE="${WORKSPACE:-prod}"
 PROJECT_NAMESPACE="${PROJECT_NAMESPACE:-danielgherasim-microservices}"
 
-# Credentials must come from the environment (ARM_* preferred by azurerm,
-# TF_VAR_* consumed by this module's variables). Never hardcode them here.
-: "${TF_VAR_client_id:?Set TF_VAR_client_id (Azure service principal appId)}"
-: "${TF_VAR_client_secret:?Set TF_VAR_client_secret (Azure service principal secret)}"
-: "${TF_VAR_tenant_id:?Set TF_VAR_tenant_id}"
-: "${TF_VAR_subscription_id:?Set TF_VAR_subscription_id}"
+# Credentials must come from environment variables consumed by the azurerm
+# provider. Use ARM_USE_OIDC=true plus ARM_OIDC_TOKEN for federated auth, or
+# ARM_CLIENT_SECRET for local service-principal auth.
+: "${ARM_CLIENT_ID:?Set ARM_CLIENT_ID}"
+: "${ARM_TENANT_ID:?Set ARM_TENANT_ID}"
+: "${ARM_SUBSCRIPTION_ID:?Set ARM_SUBSCRIPTION_ID}"
+if [[ "${ARM_USE_OIDC:-false}" != "true" ]]; then
+  : "${ARM_CLIENT_SECRET:?Set ARM_CLIENT_SECRET, or set ARM_USE_OIDC=true with ARM_OIDC_TOKEN}"
+fi
 
 terraform init
 

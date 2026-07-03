@@ -1,0 +1,193 @@
+# Checkov configuration for the `infrastructure` Terraform repo (aws/azure/gcp roots).
+#
+# This is a solo dissertation lab project, not an enterprise environment. Every
+# skip below is a deliberate, reviewed decision for a specific finding - not a
+# blanket suppression of a whole check category. Findings that were genuinely
+# fixable gaps (missing EKS log types, IAM wildcard resources, undefined KMS
+# key policies, default-SG hygiene, VPC flow logs, AKS upgrade
+# channel/policy add-on, GKE alias IPs/release channel/shielded
+# nodes/workload identity metadata/Artifact Registry CMEK) were fixed directly
+# in the Terraform instead of being skipped here - see
+# plans/2026-07-03-checkov-gates.md for the full before/after triage.
+#
+# One additional finding (CKV_AWS_355 on the AWS Load Balancer Controller's
+# IAM policy, which is AWS's own officially published policy document and
+# needs wildcard resources on its read-only Describe* actions) is suppressed
+# with an inline `#checkov:skip=` comment directly on that resource in
+# terraform/aws/platform_addon_iam.tf instead of here, because this same
+# check ID must keep failing for any other (non-exempt) IAM policy in this
+# repo - a global skip here would blind that.
+
+skip-check:
+  # --- AWS ---
+
+  # Public EKS API endpoint access is variable-gated: staging/prod default to
+  # an empty CIDR list (private-only) and a Terraform `validation` block in
+  # terraform/aws/variables.tf hard-fails any attempt to set 0.0.0.0/0 outside
+  # `dev`. This is the permissive-dev-only pattern called out as acceptable
+  # lab-scope in the project plan.
+  - CKV_AWS_38
+
+  # Automatic Secrets Manager rotation requires standing up per-secret
+  # rotation Lambdas. These secrets are generated fresh by Terraform on every
+  # apply and the whole environment is destroyed/recreated per demo cycle
+  # (recovery_window_in_days=0 already reflects that lifecycle) - runtime
+  # auto-rotation infrastructure is out of scope for this lab.
+  - CKV2_AWS_57
+
+  # The explicit key policies added to terraform/aws/kms.tf (eks_secrets,
+  # ecr) for CKV2_AWS_64 ("KMS key policy is defined") intentionally
+  # replicate AWS's own default key policy verbatim - a single "Enable IAM
+  # User Permissions" statement granting the account root full kms:* access,
+  # with actual authorization delegated to IAM policies on the roles that
+  # use the key. That statement is inherently unconstrained by design (it's
+  # what every AWS KMS key already has by default when no custom policy is
+  # given), so these three checks would otherwise always fail against it -
+  # narrowing it further would just recreate a custom, harder-to-reason-about
+  # variant of the same default AWS behavior.
+  - CKV_AWS_109
+  - CKV_AWS_111
+  - CKV_AWS_356
+
+  # CloudWatch Logs already encrypts data at rest by default with an
+  # AWS-managed key. The VPC flow-log group (terraform/aws/network.tf)
+  # carries only network metadata (source/dest/port/bytes), not secrets;
+  # adding a CMK here would require extending the KMS key policy to grant
+  # the logs.<region>.amazonaws.com service principal explicit permission,
+  # not worth the added complexity for this data.
+  - CKV_AWS_158
+
+  # --- Azure (AKS) ---
+
+  # AKS API server authorized IP ranges: CI applies from GitLab SaaS shared
+  # runners with non-static, unpredictable egress IPs. Mirrors the same
+  # CI-driven-apply tradeoff already made explicit for AWS's public EKS
+  # endpoint above.
+  - CKV_AZURE_6
+  # AKS private cluster: same CI-runner reachability constraint as above.
+  # Worker nodes already have no public IPs by default in the AKS-managed
+  # VNET model (unlike GKE), so this is purely a control-plane-reachability
+  # tradeoff, not workload exposure.
+  - CKV_AZURE_115
+  # AKS temp disk/cache CMK encryption: Azure already encrypts these at rest
+  # by default with platform-managed keys. Customer-managed key encryption
+  # requires provisioning a dedicated Disk Encryption Set + Key Vault key,
+  # out of scope for this lab cluster.
+  - CKV_AZURE_227
+  # Ephemeral OS disks require specific VM SKUs with sufficient local temp
+  # storage, not guaranteed on the cost-optimized VM size used here.
+  - CKV_AZURE_226
+  # Paid SKU for AKS SLA is a cost decision for a lab cluster that is
+  # regularly destroyed/recreated, not a production workload needing an SLA.
+  - CKV_AZURE_170
+  # Disabling the AKS local admin account requires Azure AD RBAC integration
+  # to be configured first (not implemented for this lab cluster); disabling
+  # it today would remove the only configured cluster access path.
+  - CKV_AZURE_141
+  # Cluster observability is provided by the in-cluster kube-prometheus-stack
+  # / Loki / Tempo platform stack (see platform-gitops, Phase 7 of the
+  # project plan), not Azure Monitor - enabling both would be redundant.
+  - CKV_AZURE_4
+  # "Minimum 50 pods per node" targets large production clusters; not
+  # relevant at this dissertation demo's scale.
+  - CKV_AZURE_168
+  # Pod-to-pod traffic policy is enforced by the Istio ambient mesh
+  # (AuthorizationPolicy / STRICT PeerAuthentication, see platform-gitops
+  # Phase 3), not the AKS/Azure CNI NetworkPolicy add-on.
+  - CKV_AZURE_7
+  # This lab cluster intentionally runs a single node pool (cost/scope); a
+  # dedicated system-only node pool would double compute cost for marginal
+  # benefit at this scale.
+  - CKV_AZURE_232
+  # The cluster does not use the Azure Key Vault Secrets Store CSI Driver;
+  # secrets are delivered via External Secrets Operator (Phase 4 of the
+  # project plan), so this control does not apply.
+  - CKV_AZURE_172
+  # Same reasoning as CKV_AZURE_227 (temp disk/cache CMK) - platform-managed
+  # encryption is already on by default; a dedicated Disk Encryption Set is
+  # out of scope for this lab cluster.
+  - CKV_AZURE_117
+  # AKS is deployed with the default (kubenet-equivalent) networking profile
+  # rather than an explicit Azure CNI VNET plan; unnecessary IP-space
+  # planning for a single small lab cluster, and Istio ambient's ztunnel
+  # dataplane does not require Azure CNI specifically.
+  - CKV2_AZURE_29
+
+  # --- Azure (ACR) ---
+
+  # Both container image vulnerability scanning and image quarantine/
+  # verification are already enforced in CI via Trivy (fail-on-CRITICAL) and
+  # cosign keyless sign+verify (Phase 9 Task 25, utilities/ci-templates/) -
+  # Microsoft Defender for Containers registry scanning would duplicate this
+  # and is a paid Azure Defender add-on.
+  - CKV_AZURE_163
+  - CKV_AZURE_166
+  # Image signing/verification is implemented via cosign keyless sign+verify
+  # gate in CI (Phase 9 Task 25), not ACR's legacy content-trust feature.
+  - CKV_AZURE_164
+  # Dedicated data endpoints, retention policies, and zone redundancy are all
+  # ACR Premium-SKU-only features; this lab uses Basic SKU (cost decision).
+  - CKV_AZURE_237
+  - CKV_AZURE_167
+  - CKV_AZURE_233
+  # Single-region deployment (this cloud is spun up/demoed/destroyed one at a
+  # time per the project plan) - no cross-region geo-replication needed.
+  - CKV_AZURE_165
+  # CI pushes images to ACR from GitLab SaaS shared runners with no private
+  # network path; disabling public network access requires Premium SKU +
+  # private endpoint + VNET peering, out of scope for this lab.
+  - CKV_AZURE_139
+
+  # --- Azure (Key Vault) ---
+
+  # Terraform (from GitLab SaaS runners), External Secrets Operator, and AKS
+  # workloads all need to reach the vault without a private endpoint / VNET
+  # peering set up - same CI/operational tradeoff as the AKS/ACR public
+  # networking skips above.
+  - CKV_AZURE_189
+  - CKV_AZURE_109
+  - CKV2_AZURE_32
+  # Purge protection is intentionally disabled (mirrors AWS Secrets Manager's
+  # recovery_window_in_days=0) so `terraform destroy` can cleanly remove the
+  # vault and all secrets on every demo spin-up/destroy cycle without a
+  # manual `az keyvault purge` step. CKV_AZURE_42 ("recoverable") flags the
+  # same intentional tradeoff.
+  - CKV_AZURE_110
+  - CKV_AZURE_42
+  # No automated secret-expiry/rotation lifecycle for this lab - same
+  # reasoning as CKV2_AWS_57 above.
+  - CKV_AZURE_41
+
+  # --- GCP (GKE) ---
+
+  # Image provenance/signing is already enforced via the cosign keyless
+  # verify gate in CI (Phase 9 Task 25); GKE Binary Authorization would
+  # duplicate this and requires standing up dedicated attestor
+  # infrastructure, out of scope for this lab.
+  - CKV_GCP_66
+  # The cluster uses the GCP project's default VPC (see terraform/gcp/
+  # network.tf) rather than a Terraform-managed dedicated VPC, so there is no
+  # subnet resource in this root to attach flow-log configuration to without
+  # adopting the default network into state - out of scope for this lab's
+  # networking model.
+  - CKV_GCP_61
+  # Cluster labels ARE set (see local.common_labels in terraform/gcp/main.tf,
+  # merged with a non-empty baseline of environment/project/managed-by keys
+  # on every apply) - checkov's static analyzer cannot resolve the merge()
+  # expression to a literal value and false-positives here.
+  - CKV_GCP_21
+  # RBAC via Google Groups requires a Google Workspace domain with Cloud
+  # Identity groups, not available for this personal/lab GCP project.
+  - CKV_GCP_65
+  # Master authorized networks: same CI-runner dynamic-egress-IP reasoning as
+  # CKV_AWS_38 / CKV_AZURE_6 above.
+  - CKV_GCP_20
+  # Pod-to-pod traffic policy is enforced by the Istio ambient mesh, same
+  # reasoning as CKV_AZURE_7 above.
+  - CKV_GCP_12
+  # Private cluster / private nodes require a dedicated VPC + Cloud NAT for
+  # node egress; this root intentionally uses the project's default VPC (see
+  # terraform/gcp/network.tf) for lab simplicity. Documented residual gap,
+  # not silently dropped - would need a dedicated VPC root to close properly.
+  - CKV_GCP_25
+  - CKV_GCP_64
