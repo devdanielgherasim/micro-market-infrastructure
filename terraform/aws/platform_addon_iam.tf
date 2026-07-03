@@ -36,6 +36,11 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
+  #checkov:skip=CKV_AWS_355: this is AWS's own officially published IAM
+  #  policy for the AWS Load Balancer Controller (verbatim from AWS's
+  #  docs/GitHub); its Describe*/read actions require Resource="*", and
+  #  every mutating action is already scoped via aws:ResourceTag/
+  #  aws:RequestTag conditions.
   name        = "${local.cluster_name}-aws-load-balancer-controller"
   description = "Permissions for AWS Load Balancer Controller on ${local.cluster_name}"
 
@@ -216,6 +221,9 @@ resource "aws_iam_policy" "external_secrets" {
   name        = "${local.cluster_name}-external-secrets"
   description = "Read-only access for External Secrets Operator on ${local.cluster_name}"
 
+  # Scoped to this project/environment's own secret and parameter namespace
+  # only (never "*") so a compromised ESO pod cannot read unrelated secrets
+  # elsewhere in the account (checkov CKV_AWS_288 / CKV_AWS_355).
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -225,12 +233,18 @@ resource "aws_iam_policy" "external_secrets" {
           "secretsmanager:DescribeSecret",
           "secretsmanager:GetResourcePolicy",
           "secretsmanager:GetSecretValue",
-          "secretsmanager:ListSecretVersionIds",
+          "secretsmanager:ListSecretVersionIds"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/${var.environment}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "ssm:GetParameter",
           "ssm:GetParameters",
           "ssm:GetParametersByPath"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/${var.environment}/*"
       }
     ]
   })

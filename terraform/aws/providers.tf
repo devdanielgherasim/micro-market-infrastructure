@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
+    }
   }
 
   # Bucket/region are provided at init time via -backend-config (see ../apply.sh).

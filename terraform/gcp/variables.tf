@@ -3,12 +3,6 @@ variable "project_id" {
   description = "The Google Cloud project ID"
 }
 
-variable "credentials_file" {
-  type        = string
-  description = "Path to the Google Cloud credentials file"
-  sensitive   = true
-}
-
 variable "region" {
   type        = string
   description = "The Google Cloud region where resources will be deployed"
@@ -91,4 +85,29 @@ variable "deletion_protection" {
   type        = bool
   description = "The deletion protection flag"
   default     = true
+}
+
+variable "database_name" {
+  type        = string
+  description = "Shared PostgreSQL database name seeded into cloud secret managers"
+  default     = "microservices"
+}
+
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Scoped Cloudflare API token for DNS automation and DNS-01 validation"
+  sensitive   = true
+  default     = ""
+}
+
+variable "gitlab_project_path" {
+  type        = string
+  description = "GitLab project path allowed to federate into GCP Workload Identity Federation, for example group/project. Leave empty to skip CI identity federation."
+  default     = ""
+}
+
+variable "gitlab_ref" {
+  type        = string
+  description = "Git ref allowed to use the GCP CI federated credential"
+  default     = "main"
 }

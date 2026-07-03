@@ -1,56 +1,6 @@
-resource "azurerm_resource_group" "this" {
-  name     = "rg-${var.project_name}-${var.environment}"
-  location = var.location
-  tags     = local.tags
-}
-
-resource "azurerm_container_registry" "this" {
-  name                = "acr${replace(var.project_name, "-", "")}${var.environment}"
-  resource_group_name = azurerm_resource_group.this.name
-  location            = azurerm_resource_group.this.location
-  sku                 = var.acr_sku_name
-  admin_enabled       = false
-  tags                = local.tags
-}
-
-resource "azurerm_kubernetes_cluster" "this" {
-  name                = "k8s-${var.project_name}-${var.environment}"
-  location            = azurerm_resource_group.this.location
-  resource_group_name = azurerm_resource_group.this.name
-  dns_prefix          = "k8s-${var.project_name}-${var.environment}"
-  kubernetes_version  = var.kubernetes_version
-  node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
-
-  default_node_pool {
-    name                 = "default"
-    min_count            = var.min_node_count
-    max_count            = var.max_node_count
-    node_count           = var.node_count
-    vm_size              = var.aks_vm_size
-    os_disk_size_gb      = 50
-    auto_scaling_enabled = true
-
-    tags = merge(var.tags, {
-      NodePool = "default"
-    })
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  tags       = local.tags
-  depends_on = [azurerm_container_registry.this]
-}
-
-resource "azurerm_role_assignment" "this" {
-  principal_id                     = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
-  role_definition_name             = "AcrPull"
-  scope                            = azurerm_container_registry.this.id
-  skip_service_principal_aad_check = true
-}
-
 locals {
+  cluster_name = "k8s-${var.project_name}-${var.environment}"
+
   tags = merge(var.tags, {
     Environment = var.environment
     Project     = var.project_name

@@ -94,7 +94,7 @@ variable "eks_node_disk_size" {
 variable "application_names" {
   type        = list(string)
   description = "Application names for which an ECR repository is created"
-  default     = ["catalog", "orders", "audit", "micro-market-frontend"]
+  default     = ["catalog", "orders", "audit", "micro-market-frontend", "java21-docker-azcli"]
 }
 
 variable "ecr_kept_images" {
@@ -107,4 +107,17 @@ variable "tags" {
   type        = map(string)
   description = "Additional tags applied to all resources"
   default     = {}
+}
+
+variable "database_name" {
+  type        = string
+  description = "Shared PostgreSQL database name seeded into cloud secret managers"
+  default     = "microservices"
+}
+
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Scoped Cloudflare API token for DNS automation and DNS-01 validation"
+  sensitive   = true
+  default     = ""
 }

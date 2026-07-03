@@ -72,3 +72,44 @@ output "domain_suffix" {
   value       = var.domain_suffix
   description = "The domain suffix used for DNS"
 }
+
+output "secret_prefix" {
+  value       = "${var.project_name}-${var.environment}"
+  description = "GCP Secret Manager prefix containing platform and application secrets"
+}
+
+output "gke_service_account_email" {
+  value       = google_service_account.gke_nodes.email
+  description = "GKE node service account email"
+}
+
+output "argocd_oidc_client_secret" {
+  value       = random_password.argocd_client.result
+  description = "Argo CD OIDC client secret seeded into cloud secret managers"
+  sensitive   = true
+}
+
+output "artifact_registry_repository" {
+  value       = google_artifact_registry_repository.this.name
+  description = "Artifact Registry repository name"
+}
+
+output "workload_identity_pool" {
+  value       = local.workload_pool
+  description = "GKE Workload Identity pool"
+}
+
+output "external_secrets_service_account_email" {
+  value       = google_service_account.addon["external_secrets"].email
+  description = "Google service account bound to the External Secrets Kubernetes service account"
+}
+
+output "gitlab_ci_service_account_email" {
+  value       = try(google_service_account.gitlab_ci[0].email, null)
+  description = "Google service account for GitLab CI, when enabled"
+}
+
+output "gitlab_workload_identity_provider" {
+  value       = try(google_iam_workload_identity_pool_provider.gitlab[0].name, null)
+  description = "GCP Workload Identity Federation provider resource name for GitLab CI, when enabled"
+}
