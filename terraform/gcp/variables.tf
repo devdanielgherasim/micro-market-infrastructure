@@ -86,3 +86,9 @@ variable "service_account_email" {
   description = "The email address of the service account that needs access to the GKE cluster"
   default     = ""
 }
+
+variable "deletion_protection" {
+  type        = bool
+  description = "The deletion protection flag"
+  default     = true
+}

@@ -1,4 +1,15 @@
+include:
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+secret_detection:
+  stage: validate
+
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+
+default:
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
 
 stages:
   - validate
@@ -10,7 +21,9 @@ variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
-  CLOUD_PROVIDER: ${CLOUD_PROVIDER:-azure}
+  CLOUD_PROVIDER: ${CLOUD_PROVIDER:-aws}
+  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_TF_STATE_BUCKET: ${AWS_TF_STATE_BUCKET:-terraform-microservices1691715-state}
 
 .terraform-cache: &terraform-cache
   cache:
@@ -35,16 +48,30 @@ variables:
     # Set up provider-specific environment variables
     if [ "${CLOUD_PROVIDER}" = "aws" ]; then
       echo "=== [DEBUG] Configuring AWS provider ==="
-      export TF_VAR_access_key=$AWS_ACCESS_KEY_ID
-      export TF_VAR_secret_key=$AWS_SECRET_ACCESS_KEY
-      export TF_VAR_session_token=$AWS_SESSION_TOKEN
-      echo "=== [DEBUG] AWS environment variables set ==="
+      if [ -n "${AWS_ROLE_ARN:-}" ]; then
+        echo "=== [DEBUG] Assuming AWS role through GitLab OIDC ==="
+        apk add --no-cache aws-cli jq
+        CREDS=$(aws sts assume-role-with-web-identity \
+          --role-arn "${AWS_ROLE_ARN}" \
+          --role-session-name "gitlab-${CI_PROJECT_ID}-${CI_PIPELINE_ID}" \
+          --web-identity-token "${GITLAB_OIDC_TOKEN}" \
+          --duration-seconds 3600)
+        export AWS_ACCESS_KEY_ID=$(echo "${CREDS}" | jq -r '.Credentials.AccessKeyId')
+        export AWS_SECRET_ACCESS_KEY=$(echo "${CREDS}" | jq -r '.Credentials.SecretAccessKey')
+        export AWS_SESSION_TOKEN=$(echo "${CREDS}" | jq -r '.Credentials.SessionToken')
+      fi
+      export AWS_REGION="${AWS_REGION}"
+      export AWS_DEFAULT_REGION="${AWS_REGION}"
+      export TF_VAR_region="${AWS_REGION}"
+      export TF_BACKEND_ARGS="-backend-config=bucket=${AWS_TF_STATE_BUCKET} -backend-config=key=aws/${WORKSPACE}/terraform.tfstate -backend-config=region=${AWS_REGION} -backend-config=use_lockfile=true"
+      echo "=== [DEBUG] AWS environment and backend variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "azure" ]; then
       echo "=== [DEBUG] Configuring Azure provider ==="
       export TF_VAR_client_id=$ARM_CLIENT_ID
       export TF_VAR_client_secret=$ARM_CLIENT_SECRET
       export TF_VAR_tenant_id=$ARM_TENANT_ID
       export TF_VAR_subscription_id=$ARM_SUBSCRIPTION_ID
+      export TF_BACKEND_ARGS=""
       echo "=== [DEBUG] Azure environment variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "gcp" ]; then
       echo "=== [DEBUG] Configuring GCP provider ==="
@@ -52,6 +79,7 @@ variables:
       export GOOGLE_APPLICATION_CREDENTIALS="$CI_PROJECT_DIR/gcp-credentials.json"
       export TF_VAR_credentials_file="$CI_PROJECT_DIR/gcp-credentials.json"
       export TF_VAR_project_id=$GCP_PROJECT_ID
+      export TF_BACKEND_ARGS=""
       echo "=== [DEBUG] GCP environment variables set ==="
       echo "=== [DEBUG] GCP credentials file created at: $GOOGLE_APPLICATION_CREDENTIALS ==="
     else
@@ -69,7 +97,7 @@ validate_infrastructure:
     - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
     - 'echo "=== [DEBUG] Starting terraform init ==="'
-    - terraform init
+    - terraform init ${TF_BACKEND_ARGS}
     - 'echo "=== [DEBUG] Terraform init completed ==="'
     - 'echo "=== [DEBUG] Starting terraform validate ==="'
     - terraform validate
@@ -88,7 +116,7 @@ plan_infrastructure:
     - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
     - 'echo "=== [DEBUG] Starting terraform init ==="'
-    - terraform init
+    - terraform init ${TF_BACKEND_ARGS}
     - 'echo "=== [DEBUG] Terraform init completed ==="'
     - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
     - |
@@ -113,6 +141,7 @@ plan_infrastructure:
       - terraform/${CLOUD_PROVIDER}/plan.json
     reports:
       terraform: terraform/${CLOUD_PROVIDER}/plan.json
+    expire_in: 1 week
 
 apply_infrastructure:
   stage: apply
@@ -124,7 +153,7 @@ apply_infrastructure:
     - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
     - 'echo "=== [DEBUG] Starting terraform init ==="'
-    - terraform init
+    - terraform init ${TF_BACKEND_ARGS}
     - 'echo "=== [DEBUG] Terraform init completed ==="'
     - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
     - |
@@ -154,7 +183,7 @@ destroy_infrastructure:
     - 'echo "=== [DEBUG] Changed directory to $(pwd) ==="'
   script:
     - 'echo "=== [DEBUG] Starting terraform init ==="'
-    - terraform init
+    - terraform init ${TF_BACKEND_ARGS}
     - 'echo "=== [DEBUG] Terraform init completed ==="'
     - 'echo "=== [DEBUG] Setting up terraform workspace ==="'
     - |
