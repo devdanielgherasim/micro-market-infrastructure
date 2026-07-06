@@ -24,6 +24,7 @@ variables:
   CLOUD_PROVIDER: ${CLOUD_PROVIDER:-aws}
   AWS_REGION: ${AWS_REGION:-us-east-1}
   AWS_TF_STATE_BUCKET: ${AWS_TF_STATE_BUCKET:-terraform-microservices1691715-state}
+  GCP_TF_STATE_BUCKET: ${GCP_TF_STATE_BUCKET:-terraformmicroservicesstate}
 
 .terraform-cache: &terraform-cache
   cache:
@@ -90,8 +91,8 @@ variables:
         > "${CI_PROJECT_DIR}/gcp-wif-credentials.json"
       export GOOGLE_APPLICATION_CREDENTIALS="${CI_PROJECT_DIR}/gcp-wif-credentials.json"
       export TF_VAR_project_id="${GCP_PROJECT_ID}"
-      export TF_BACKEND_ARGS=""
-      echo "=== [DEBUG] GCP Workload Identity Federation environment variables set ==="
+      export TF_BACKEND_ARGS="-backend-config=bucket=${GCP_TF_STATE_BUCKET} -backend-config=prefix=terraform/environments/${WORKSPACE}/state"
+      echo "=== [DEBUG] GCP Workload Identity Federation environment and backend variables set ==="
     else
       echo "=== [DEBUG] ERROR: Unsupported cloud provider: ${CLOUD_PROVIDER}. Must be one of: aws, azure, gcp ==="
       exit 1

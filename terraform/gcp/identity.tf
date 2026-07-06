@@ -49,12 +49,6 @@ resource "google_service_account_iam_member" "addon_workload_identity_user" {
   member             = "serviceAccount:${local.workload_pool}[${each.value.namespace}/${each.value.ksa_name}]"
 }
 
-resource "google_project_iam_member" "external_secrets_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.addon["external_secrets"].email}"
-}
-
 resource "google_iam_workload_identity_pool" "gitlab" {
   count = var.gitlab_project_path == "" ? 0 : 1
 

@@ -12,10 +12,7 @@ terraform {
     }
   }
 
-  backend "gcs" {
-    bucket = "terraformmicroservicesstate"
-    prefix = "terraform/environments/dev/state"
-  }
+  backend "gcs" {}
 }
 
 provider "google" {

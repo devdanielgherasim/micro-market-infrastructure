@@ -37,7 +37,7 @@ This replaced an earlier state where a real GCP service-account JSON key was com
 
 ## Backend
 
-Each root's state lives in a cloud-native remote backend: AWS in S3 (bucket `terraform-microservices1691715-state`, key `aws/<workspace>/terraform.tfstate`, native S3 locking via `use_lockfile=true`), Azure in an `azurerm` storage-account backend, GCP in GCS. CI selects the backend by running `terraform init -backend-config=...` with `-reconfigure`, using values assembled entirely from environment variables — nothing cloud-specific is hardcoded into the Terraform files themselves.
+Each root's state lives in a cloud-native remote backend: AWS in S3 (bucket `terraform-microservices1691715-state`, key `aws/<workspace>/terraform.tfstate`, native S3 locking via `use_lockfile=true`), Azure in an `azurerm` storage-account backend with Terraform workspaces, and GCP in GCS with the prefix supplied at init time as `terraform/environments/<workspace>/state`. CI selects the backend by running `terraform init -backend-config=...`, using values assembled from environment variables; GCP no longer hardcodes the `dev` prefix in `main.tf`.
 
 `terraform/gcp/REMOTE_BACKEND_SETUP.md` documents the one-time GCS bucket bootstrap for that cloud.
 
