@@ -24,7 +24,7 @@ variable "environment" {
 variable "kubernetes_version" {
   type        = string
   description = "Kubernetes version for the EKS control plane and node group"
-  default     = "1.33"
+  default     = "1.35"
 }
 
 variable "vpc_cidr" {

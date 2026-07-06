@@ -25,9 +25,9 @@ data "aws_iam_policy_document" "eks_secrets_key" {
   # EC2 can encrypt/decrypt the node root volume at launch time.
   # Without this, instances fail with InvalidKMSKey.InvalidState.
   statement {
-    sid     = "AllowAutoScalingServiceLinkedRole"
-    effect  = "Allow"
-    actions = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
+    sid       = "AllowAutoScalingServiceLinkedRole"
+    effect    = "Allow"
+    actions   = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
     resources = ["*"]
 
     principals {
@@ -37,9 +37,9 @@ data "aws_iam_policy_document" "eks_secrets_key" {
   }
 
   statement {
-    sid     = "AllowAutoScalingServiceLinkedRoleGrant"
-    effect  = "Allow"
-    actions = ["kms:CreateGrant"]
+    sid       = "AllowAutoScalingServiceLinkedRoleGrant"
+    effect    = "Allow"
+    actions   = ["kms:CreateGrant"]
     resources = ["*"]
 
     principals {
