@@ -22,7 +22,7 @@ variables:
   TF_INPUT: "false"
   TF_PLUGIN_CACHE_DIR: "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
   CLOUD_PROVIDER: ${CLOUD_PROVIDER:-aws}
-  AWS_REGION: ${AWS_REGION:-us-east-1}
+  AWS_REGION: ${AWS_REGION:-eu-central-1}
   AWS_TF_STATE_BUCKET: ${AWS_TF_STATE_BUCKET:-terraform-microservices1691715-state}
   GCP_TF_STATE_BUCKET: ${GCP_TF_STATE_BUCKET:-terraformmicroservicesstate}
 

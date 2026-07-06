@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ENVIRONMENT="${ENVIRONMENT:-dev}"
-AWS_REGION="${AWS_REGION:-us-east-1}"
+AWS_REGION="${AWS_REGION:-eu-central-1}"
 STATE_BUCKET="${TF_STATE_BUCKET:-terraform-microservices1691715-state}"
 STATE_KEY="${TF_STATE_KEY:-aws/${ENVIRONMENT}/terraform.tfstate}"
 VAR_FILE="./tfvars_files/${ENVIRONMENT}.tfvars"

@@ -1,4 +1,4 @@
-region                 = "us-east-1"
+region                 = "eu-central-1"
 project_name           = "danielgherasim-microservices"
 environment            = "dev"
 eks_node_instance_type = "t3.small"
@@ -8,7 +8,8 @@ eks_node_max_count     = 2
 eks_node_disk_size     = 30
 az_count               = 2
 single_nat_gateway     = true
-api_allowed_cidrs      = ["0.0.0.0/0"]
+api_allowed_cidrs               = ["0.0.0.0/0"]
+secrets_recovery_window_in_days = 0
 
 tags = {
   ManagedBy   = "Terraform"

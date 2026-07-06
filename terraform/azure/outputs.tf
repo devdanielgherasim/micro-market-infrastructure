@@ -34,6 +34,18 @@ output "argocd_oidc_client_secret" {
   sensitive   = true
 }
 
+output "argocd_admin_password" {
+  description = "ArgoCD admin password stored in Key Vault under argocd-admin"
+  value       = random_password.argocd_admin.result
+  sensitive   = true
+}
+
+output "argocd_redis_password" {
+  description = "ArgoCD Redis password stored in Key Vault under argocd-redis"
+  value       = random_password.argocd_redis.result
+  sensitive   = true
+}
+
 output "cluster_name" {
   description = "AKS cluster name"
   value       = azurerm_kubernetes_cluster.this.name
