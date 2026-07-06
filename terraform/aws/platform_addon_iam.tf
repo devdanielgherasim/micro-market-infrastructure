@@ -31,7 +31,7 @@ data "aws_iam_policy_document" "irsa_assume_role" {
 }
 
 resource "aws_iam_role" "aws_load_balancer_controller" {
-  name               = "${local.cluster_name}-aws-load-balancer-controller"
+  name               = "${local.cluster_name}-albc"
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role["aws_load_balancer_controller"].json
 }
 
@@ -41,7 +41,7 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
   #  docs/GitHub); its Describe*/read actions require Resource="*", and
   #  every mutating action is already scoped via aws:ResourceTag/
   #  aws:RequestTag conditions.
-  name        = "${local.cluster_name}-aws-load-balancer-controller"
+  name        = "${local.cluster_name}-albc"
   description = "Permissions for AWS Load Balancer Controller on ${local.cluster_name}"
 
   policy = jsonencode({
