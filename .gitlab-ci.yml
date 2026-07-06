@@ -4,7 +4,9 @@ include:
 secret_detection:
   stage: validate
 
-image: hashicorp/terraform:1.12
+image:
+  name: hashicorp/terraform:1.12
+  entrypoint: [""]
 
 default:
   id_tokens:
