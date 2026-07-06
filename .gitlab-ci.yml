@@ -4,7 +4,7 @@ include:
 secret_detection:
   stage: validate
 
-image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+image: hashicorp/terraform:1.12
 
 default:
   id_tokens:
