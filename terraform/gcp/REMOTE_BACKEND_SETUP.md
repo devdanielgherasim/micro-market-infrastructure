@@ -71,8 +71,13 @@ After setting up the GCS bucket, initialize Terraform with your backend bucket a
 ```bash
 terraform init \
   -backend-config="bucket=YOUR_GCS_BUCKET_NAME" \
-  -backend-config="prefix=terraform/environments/dev/state"
+  -backend-config="prefix=terraform/environments/${WORKSPACE}/state"
 ```
+
+The local `apply.sh` and `destroy.sh` scripts use `GCP_TF_STATE_BUCKET` and
+`GCP_TF_STATE_PREFIX` if set. By default they use bucket
+`terraformmicroservicesstate` and prefix `terraform/environments/${WORKSPACE}/state`,
+so dev/staging/prod do not all share a hardcoded `dev` backend prefix.
 
 The provider uses Google application-default credentials from `gcloud auth application-default login` locally, or `GOOGLE_APPLICATION_CREDENTIALS` pointing at a Workload Identity Federation credential configuration in CI.
 
