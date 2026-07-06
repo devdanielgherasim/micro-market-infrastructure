@@ -28,10 +28,6 @@ resource "aws_eks_cluster" "this" {
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
 }
 
-# Launch template: enforces IMDSv2 (http_tokens=required) and moves disk
-# configuration here so it can be encrypted with the cluster KMS key.
-# hop_limit=2 is required so pods inside containers can reach the metadata
-# endpoint for IRSA token exchange (container adds one hop).
 resource "aws_launch_template" "eks_nodes" {
   name_prefix = "lt-${local.cluster_name}-"
   description = "Worker node launch template for ${local.cluster_name}"
@@ -39,7 +35,7 @@ resource "aws_launch_template" "eks_nodes" {
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
   }
 
   block_device_mappings {
