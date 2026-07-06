@@ -1,7 +1,7 @@
 variable "region" {
   type        = string
   description = "AWS region where resources will be deployed"
-  default     = "us-east-1"
+  default     = "eu-central-1"
 }
 
 variable "project_name" {
@@ -94,7 +94,7 @@ variable "eks_node_disk_size" {
 variable "application_names" {
   type        = list(string)
   description = "Application names for which an ECR repository is created"
-  default     = ["catalog", "orders", "audit", "micro-market-frontend", "java21-docker-azcli"]
+  default     = ["catalog", "orders", "audit", "micro-market-frontend", "ci-base-aws", "ci-base-azure", "ci-base-gcp"]
 }
 
 variable "ecr_kept_images" {
@@ -120,4 +120,15 @@ variable "cloudflare_api_token" {
   description = "Scoped Cloudflare API token for DNS automation and DNS-01 validation"
   sensitive   = true
   default     = ""
+}
+
+variable "secrets_recovery_window_in_days" {
+  type        = number
+  description = "Recovery window for Secrets Manager secrets. 0 = force-delete with no recovery (dev/demo). 7–30 = safe window for prod."
+  default     = 7
+
+  validation {
+    condition     = var.secrets_recovery_window_in_days == 0 || (var.secrets_recovery_window_in_days >= 7 && var.secrets_recovery_window_in_days <= 30)
+    error_message = "Must be 0 (force delete) or between 7 and 30 days."
+  }
 }

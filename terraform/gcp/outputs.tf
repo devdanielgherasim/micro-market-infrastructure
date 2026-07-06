@@ -89,6 +89,18 @@ output "argocd_oidc_client_secret" {
   sensitive   = true
 }
 
+output "argocd_admin_password" {
+  description = "ArgoCD admin password stored in Secret Manager under argocd-admin"
+  value       = random_password.argocd_admin.result
+  sensitive   = true
+}
+
+output "argocd_redis_password" {
+  description = "ArgoCD Redis password stored in Secret Manager under argocd-redis"
+  value       = random_password.argocd_redis.result
+  sensitive   = true
+}
+
 output "artifact_registry_repository" {
   value       = google_artifact_registry_repository.this.name
   description = "Artifact Registry repository name"

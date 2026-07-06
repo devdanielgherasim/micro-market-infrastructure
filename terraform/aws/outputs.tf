@@ -48,3 +48,15 @@ output "argocd_oidc_client_secret" {
   value       = random_password.argocd_client.result
   sensitive   = true
 }
+
+output "argocd_admin_password" {
+  description = "ArgoCD admin password stored in Secrets Manager under argocd/admin"
+  value       = random_password.argocd_admin.result
+  sensitive   = true
+}
+
+output "argocd_redis_password" {
+  description = "ArgoCD Redis password stored in Secrets Manager under argocd/redis"
+  value       = random_password.argocd_redis.result
+  sensitive   = true
+}

@@ -28,6 +28,46 @@ resource "aws_eks_cluster" "this" {
   depends_on = [aws_iam_role_policy_attachment.eks_cluster_policy]
 }
 
+# Launch template: enforces IMDSv2 (http_tokens=required) and moves disk
+# configuration here so it can be encrypted with the cluster KMS key.
+# hop_limit=2 is required so pods inside containers can reach the metadata
+# endpoint for IRSA token exchange (container adds one hop).
+resource "aws_launch_template" "eks_nodes" {
+  name_prefix = "lt-${local.cluster_name}-"
+  description = "Worker node launch template for ${local.cluster_name}"
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = var.eks_node_disk_size
+      volume_type           = "gp3"
+      encrypted             = true
+      kms_key_id            = aws_kms_key.eks_secrets.arn
+      delete_on_termination = true
+    }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(local.tags, { Name = "node-${local.cluster_name}" })
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(local.tags, { Name = "vol-${local.cluster_name}" })
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "ng-${var.project_name}-${var.environment}"
@@ -46,7 +86,11 @@ resource "aws_eks_node_group" "this" {
   }
 
   instance_types = [var.eks_node_instance_type]
-  disk_size      = var.eks_node_disk_size
+
+  launch_template {
+    id      = aws_launch_template.eks_nodes.id
+    version = aws_launch_template.eks_nodes.latest_version
+  }
 
   # Let the cluster autoscaler manage desired_size after creation.
   lifecycle {

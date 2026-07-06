@@ -51,6 +51,12 @@ locals {
     "cloudflare/api-token" = {
       api-token = var.cloudflare_api_token
     }
+    "argocd/admin" = {
+      password = random_password.argocd_admin.result
+    }
+    "argocd/redis" = {
+      password = random_password.argocd_redis.result
+    }
     "catalog/db" = {
       username = "catalog"
       password = random_password.catalog_db.result
@@ -156,11 +162,29 @@ resource "random_password" "loki" {
   special = true
 }
 
+resource "random_password" "argocd_admin" {
+  length      = 24
+  special     = true
+  min_special = 2
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+}
+
+resource "random_password" "argocd_redis" {
+  length      = 24
+  special     = true
+  min_special = 2
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+}
+
 resource "aws_secretsmanager_secret" "platform" {
   for_each = local.platform_secret_payloads
 
   name                    = "${local.secret_prefix}/${each.key}"
-  recovery_window_in_days = 0
+  recovery_window_in_days = var.secrets_recovery_window_in_days
   kms_key_id              = aws_kms_key.eks_secrets.arn
 }
 
