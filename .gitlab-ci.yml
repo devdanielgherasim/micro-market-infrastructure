@@ -44,8 +44,8 @@ variables:
   - 'echo "=== [DEBUG] Project directory: $CI_PROJECT_DIR ==="'
   - 'echo "=== [DEBUG] Creating plugin cache directory: $TF_PLUGIN_CACHE_DIR ==="'
   - mkdir -p $TF_PLUGIN_CACHE_DIR
-  - WORKSPACE=$(echo ${CI_COMMIT_REF_NAME} | tr -cd '[:alnum:]-' | tr '[:upper:]' '[:lower:]')
-  - 'echo "=== [DEBUG] Using workspace: $WORKSPACE derived from branch: ${CI_COMMIT_REF_NAME} ==="'
+  - WORKSPACE="${ENVIRONMENT:-dev}"
+  - 'echo "=== [DEBUG] Using workspace: $WORKSPACE (from ENVIRONMENT variable) ==="'
   - 'echo "=== [DEBUG] Setting up provider-specific environment variables ==="'
   - |
     # Set up provider-specific environment variables
@@ -157,7 +157,7 @@ plan_infrastructure:
       terraform workspace select "$WORKSPACE"
       echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
     - 'echo "=== [DEBUG] Starting terraform plan ==="'
-    - terraform plan --var-file=./tfvars_files/$WORKSPACE.tfvars -var project_name="$PROJECT_NAMESPACE" -out=tfplan
+    - terraform plan --var-file=./tfvars_files/${ENVIRONMENT:-dev}.tfvars -var project_name="$PROJECT_NAMESPACE" -out=tfplan
     - 'echo "=== [DEBUG] Terraform plan completed ==="'
     - 'echo "=== [DEBUG] Converting plan to JSON ==="'
     - terraform show -json tfplan > plan.json
@@ -223,6 +223,6 @@ destroy_infrastructure:
       fi
       echo "=== [DEBUG] Current workspace: $(terraform workspace show) ==="
     - 'echo "=== [DEBUG] Starting terraform destroy ==="'
-    - terraform destroy -auto-approve --var-file=./tfvars_files/$WORKSPACE.tfvars
+    - terraform destroy -auto-approve --var-file=./tfvars_files/${ENVIRONMENT:-dev}.tfvars
     - 'echo "=== [DEBUG] Terraform destroy completed successfully ==="'
     - 'echo "=== [DEBUG] Infrastructure destroyed for provider: ${CLOUD_PROVIDER} ==="'
