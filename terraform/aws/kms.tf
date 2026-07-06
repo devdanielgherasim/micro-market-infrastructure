@@ -19,6 +19,40 @@ data "aws_iam_policy_document" "eks_secrets_key" {
       identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
     }
   }
+
+  # EKS node group ASGs launch EC2 instances with encrypted EBS volumes.
+  # The ASG service-linked role must be able to create KMS grants so that
+  # EC2 can encrypt/decrypt the node root volume at launch time.
+  # Without this, instances fail with InvalidKMSKey.InvalidState.
+  statement {
+    sid     = "AllowAutoScalingServiceLinkedRole"
+    effect  = "Allow"
+    actions = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:DescribeKey"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"]
+    }
+  }
+
+  statement {
+    sid     = "AllowAutoScalingServiceLinkedRoleGrant"
+    effect  = "Allow"
+    actions = ["kms:CreateGrant"]
+    resources = ["*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "kms:GrantIsForAWSResource"
+      values   = ["true"]
+    }
+  }
 }
 
 resource "aws_kms_key" "eks_secrets" {
