@@ -122,6 +122,12 @@ variable "cloudflare_api_token" {
   default     = ""
 }
 
+variable "gitlab_ci_role_arn" {
+  type        = string
+  description = "ARN of the GitLab OIDC IAM role used by CI pipelines. Granted cluster-admin access so kubernetes-infrastructure Terraform can manage EKS resources."
+  default     = ""
+}
+
 variable "secrets_recovery_window_in_days" {
   type        = number
   description = "Recovery window for Secrets Manager secrets. 0 = force-delete with no recovery (dev/demo). 7–30 = safe window for prod."

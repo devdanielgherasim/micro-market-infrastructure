@@ -67,6 +67,7 @@ variables:
       export AWS_DEFAULT_REGION="${AWS_REGION}"
       export TF_VAR_region="${AWS_REGION}"
       export TF_BACKEND_ARGS="-backend-config=bucket=${AWS_TF_STATE_BUCKET} -backend-config=key=aws/${WORKSPACE}/terraform.tfstate -backend-config=region=${AWS_REGION} -backend-config=use_lockfile=true"
+      export TF_VAR_gitlab_ci_role_arn="${AWS_ROLE_ARN:-}"
       echo "=== [DEBUG] AWS environment and backend variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "azure" ]; then
       echo "=== [DEBUG] Configuring Azure provider ==="

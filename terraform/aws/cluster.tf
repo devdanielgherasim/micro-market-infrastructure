@@ -168,3 +168,25 @@ resource "aws_eks_addon" "ebs_csi_driver" {
 
   depends_on = [aws_eks_node_group.this]
 }
+
+# Grant the GitLab CI OIDC role cluster-admin so the kubernetes-infrastructure
+# Terraform pipeline can manage Kubernetes resources (kubernetes_manifest, helm_release, etc.)
+resource "aws_eks_access_entry" "gitlab_ci" {
+  count         = var.gitlab_ci_role_arn != "" ? 1 : 0
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.gitlab_ci_role_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "gitlab_ci_admin" {
+  count         = var.gitlab_ci_role_arn != "" ? 1 : 0
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.gitlab_ci_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.gitlab_ci]
+}
