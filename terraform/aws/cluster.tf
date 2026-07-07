@@ -93,11 +93,6 @@ resource "aws_eks_node_group" "this" {
     version = aws_launch_template.eks_nodes.latest_version
   }
 
-  # Let the cluster autoscaler manage desired_size after creation.
-  lifecycle {
-    ignore_changes = [scaling_config[0].desired_size]
-  }
-
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node_policy,
     aws_iam_role_policy_attachment.ecr_read_only,
