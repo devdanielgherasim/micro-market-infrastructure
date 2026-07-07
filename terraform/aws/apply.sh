@@ -13,14 +13,25 @@ if [[ ! -f "${VAR_FILE}" ]]; then
   exit 1
 fi
 
-terraform init \
+terraform init -reconfigure \
   -backend-config="bucket=${STATE_BUCKET}" \
   -backend-config="key=${STATE_KEY}" \
   -backend-config="region=${AWS_REGION}" \
   -backend-config="use_lockfile=true"
 
+terraform workspace select "${ENVIRONMENT}" 2>/dev/null || terraform workspace new "${ENVIRONMENT}"
+
 terraform plan \
   -var-file="${VAR_FILE}" \
   -out=tfplan
 
+echo
+read -rp "Apply the plan above? [y/N] " CONFIRM
+if [[ "${CONFIRM}" != "y" && "${CONFIRM}" != "Y" ]]; then
+  echo "Aborted."
+  rm -f tfplan
+  exit 0
+fi
+
 terraform apply tfplan
+rm -f tfplan
