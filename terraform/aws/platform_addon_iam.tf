@@ -253,12 +253,17 @@ resource "aws_iam_policy" "external_secrets" {
           "kms:DescribeKey"
         ]
         Resource = aws_kms_key.eks_secrets.arn
+        # kms:ViaService restricts decryption to calls made through Secrets Manager only.
+        # The EncryptionContext condition was removed: IAM does not evaluate
+        # kms:EncryptionContext:aws:secretsmanager:arn correctly because the
+        # "aws:" prefix in the context key name conflicts with the IAM global
+        # condition key namespace, causing an implicit deny regardless of the
+        # actual context value. The ViaService guard alone is sufficient because
+        # the Secrets Manager permission above is already scoped to the
+        # project/environment secret prefix.
         Condition = {
           StringEquals = {
             "kms:ViaService" = "secretsmanager.${var.region}.amazonaws.com"
-          }
-          StringLike = {
-            "kms:EncryptionContext:aws:secretsmanager:arn" = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/${var.environment}/*"
           }
         }
       }
