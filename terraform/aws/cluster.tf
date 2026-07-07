@@ -134,6 +134,12 @@ resource "aws_eks_addon" "vpc_cni" {
   addon_name               = "vpc-cni"
   addon_version            = data.aws_eks_addon_version.vpc_cni.version
   service_account_role_arn = aws_iam_role.vpc_cni.arn
+  configuration_values = jsonencode({
+    env = {
+      ENABLE_PREFIX_DELEGATION = "true"
+      WARM_PREFIX_TARGET       = "1"
+    }
+  })
 
   resolve_conflicts_on_update = "OVERWRITE"
 
