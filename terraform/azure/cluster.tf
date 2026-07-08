@@ -36,6 +36,10 @@ resource "azurerm_kubernetes_cluster" "this" {
     os_disk_size_gb      = 50
     auto_scaling_enabled = true
 
+    upgrade_settings {
+      max_surge = "10%"
+    }
+
     tags = merge(var.tags, {
       NodePool = "default"
     })
@@ -43,6 +47,12 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   identity {
     type = "SystemAssigned"
+  }
+
+  # node_count is managed by the cluster autoscaler at runtime; ignoring it
+  # prevents Terraform from resetting the count on every apply.
+  lifecycle {
+    ignore_changes = [default_node_pool[0].node_count]
   }
 
   tags       = local.tags
