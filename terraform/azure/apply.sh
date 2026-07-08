@@ -70,6 +70,7 @@ export TF_VAR_tenant_id="${ARM_TENANT_ID}"
 export TF_VAR_subscription_id="${ARM_SUBSCRIPTION_ID}"
 export TF_VAR_client_secret="${ARM_CLIENT_SECRET:-}"
 export TF_VAR_location="${AZURE_LOCATION}"
+export TF_VAR_cloudflare_api_token="${CLOUDFLARE_TOKEN:-${TF_VAR_cloudflare_api_token:-}}"
 
 if [[ -z "${AZURE_TF_STATE_STORAGE_ACCOUNT}" || "${AZURE_TF_STATE_STORAGE_ACCOUNT}" == "terraformmicrostate" ]]; then
   subscription_part=$(echo "${ARM_SUBSCRIPTION_ID}" | tr -d '-' | tr '[:upper:]' '[:lower:]' | cut -c1-12)
