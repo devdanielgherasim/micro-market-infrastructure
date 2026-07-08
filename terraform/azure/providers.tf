@@ -1,10 +1,13 @@
 terraform {
-  # required_version = "=1.13.0"
+  # Matches the >= 1.10.0 floor used by the aws/ and gcp/ Terraform roots
+  # in this workspace (see infrastructure/terraform/{aws,gcp}/*.tf) so the
+  # three cloud roots stay at parity instead of drifting independently.
+  required_version = ">= 1.10.0"
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "=4.32.0"
+      version = "=4.80.0"
     }
     random = {
       source  = "hashicorp/random"

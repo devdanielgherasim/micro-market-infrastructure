@@ -20,12 +20,11 @@ resource "azurerm_user_assigned_identity" "addon" {
 resource "azurerm_federated_identity_credential" "addon" {
   for_each = local.azure_workload_identities
 
-  name                = each.value.name
-  resource_group_name = azurerm_resource_group.this.name
-  parent_id           = azurerm_user_assigned_identity.addon[each.key].id
-  issuer              = azurerm_kubernetes_cluster.this.oidc_issuer_url
-  audience            = ["api://AzureADTokenExchange"]
-  subject             = each.value.subject
+  name                      = each.value.name
+  user_assigned_identity_id = azurerm_user_assigned_identity.addon[each.key].id
+  issuer                    = azurerm_kubernetes_cluster.this.oidc_issuer_url
+  audience                  = ["api://AzureADTokenExchange"]
+  subject                   = each.value.subject
 }
 
 resource "azurerm_role_assignment" "external_secrets_key_vault" {
@@ -46,12 +45,11 @@ resource "azurerm_user_assigned_identity" "gitlab_ci" {
 resource "azurerm_federated_identity_credential" "gitlab_ci" {
   count = var.gitlab_project_path == "" ? 0 : 1
 
-  name                = "gitlab-${var.environment}"
-  resource_group_name = azurerm_resource_group.this.name
-  parent_id           = azurerm_user_assigned_identity.gitlab_ci[0].id
-  issuer              = "https://gitlab.com"
-  audience            = ["https://gitlab.com"]
-  subject             = "project_path:${var.gitlab_project_path}:ref_type:branch:ref:${var.gitlab_ref}"
+  name                      = "gitlab-${var.environment}"
+  user_assigned_identity_id = azurerm_user_assigned_identity.gitlab_ci[0].id
+  issuer                    = "https://gitlab.com"
+  audience                  = ["https://gitlab.com"]
+  subject                   = "project_path:${var.gitlab_project_path}:ref_type:branch:ref:${var.gitlab_ref}"
 }
 
 resource "azurerm_role_assignment" "gitlab_ci_contributor" {

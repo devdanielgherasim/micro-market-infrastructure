@@ -79,7 +79,15 @@ variables:
       export TF_VAR_client_id="${ARM_CLIENT_ID}"
       export TF_VAR_tenant_id="${ARM_TENANT_ID}"
       export TF_VAR_subscription_id="${ARM_SUBSCRIPTION_ID}"
-      export TF_BACKEND_ARGS=""
+      export AZURE_TF_STATE_RESOURCE_GROUP="${AZURE_TF_STATE_RESOURCE_GROUP:-rg-infrastructure}"
+      export AZURE_TF_STATE_STORAGE_ACCOUNT="${AZURE_TF_STATE_STORAGE_ACCOUNT:-}"
+      export AZURE_TF_STATE_CONTAINER="${AZURE_TF_STATE_CONTAINER:-tfstate}"
+      if [ -z "${AZURE_TF_STATE_STORAGE_ACCOUNT}" ] || [ "${AZURE_TF_STATE_STORAGE_ACCOUNT}" = "terraformmicrostate" ]; then
+        AZURE_SUBSCRIPTION_PART="$(printf '%s' "${ARM_SUBSCRIPTION_ID}" | tr -d '-' | tr '[:upper:]' '[:lower:]' | cut -c1-12)"
+        AZURE_ENVIRONMENT_PART="$(printf '%s' "${WORKSPACE}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]' | cut -c1-5)"
+        export AZURE_TF_STATE_STORAGE_ACCOUNT="tfstate${AZURE_SUBSCRIPTION_PART}${AZURE_ENVIRONMENT_PART}"
+      fi
+      export TF_BACKEND_ARGS="-backend-config=resource_group_name=${AZURE_TF_STATE_RESOURCE_GROUP} -backend-config=storage_account_name=${AZURE_TF_STATE_STORAGE_ACCOUNT} -backend-config=container_name=${AZURE_TF_STATE_CONTAINER} -backend-config=key=terraform.tfstate"
       echo "=== [DEBUG] Azure OIDC environment variables set ==="
     elif [ "${CLOUD_PROVIDER}" = "gcp" ]; then
       echo "=== [DEBUG] Configuring GCP provider ==="
