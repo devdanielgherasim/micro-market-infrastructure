@@ -12,8 +12,20 @@ resource "azurerm_kubernetes_cluster" "this" {
   # Keep node/control-plane patch versions current automatically (checkov
   # CKV_AZURE_171) and enable the Azure Policy add-on for baseline
   # in-cluster policy enforcement (checkov CKV_AZURE_116).
-  automatic_channel_upgrade = "patch"
+  automatic_upgrade_channel = "patch"
+  node_os_upgrade_channel   = "NodeImage"
   azure_policy_enabled      = true
+
+  # Fully public by default (matches historical behavior). Populate
+  # var.api_allowed_cidrs to restrict the API server to known operator/CI
+  # ranges; the block is only emitted when the list is non-empty so an
+  # empty default can never be mistaken for a deny-all.
+  dynamic "api_server_access_profile" {
+    for_each = length(var.api_allowed_cidrs) > 0 ? [1] : []
+    content {
+      authorized_ip_ranges = var.api_allowed_cidrs
+    }
+  }
 
   default_node_pool {
     name                 = "default"

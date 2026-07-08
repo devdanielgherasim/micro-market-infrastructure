@@ -7,6 +7,9 @@ terraform/.terraform/*
 # (.terraform.lock.hcl is intentionally NOT ignored — commit it per HashiCorp guidance)
 **/.terraform/*
 
+# Local persistent agent plans
+/plans/
+
 # Ignore variables files
 *.auto.tfvars
 *.tfvars.local

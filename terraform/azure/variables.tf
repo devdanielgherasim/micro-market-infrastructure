@@ -68,8 +68,20 @@ variable "max_node_count" {
 
 variable "kubernetes_version" {
   type        = string
-  description = "Kubernetes version for the AKS cluster"
-  default     = "1.32.4"
+  description = "Kubernetes version for the AKS cluster. Leave null to let Azure choose the regional default."
+  nullable    = true
+  default     = null
+}
+
+variable "api_allowed_cidrs" {
+  type        = list(string)
+  description = "CIDR blocks allowed to reach the AKS public API server endpoint. Empty list (default) leaves the API server fully public, matching prior behavior; populate to restrict it to known operator/CI ranges, mirroring aws/variables.tf's api_allowed_cidrs."
+  default     = []
+
+  validation {
+    condition     = !contains(var.api_allowed_cidrs, "0.0.0.0/0")
+    error_message = "Do not add 0.0.0.0/0 to api_allowed_cidrs; leave the list empty instead to keep the API server public, since AKS's authorized_ip_ranges does not treat 0.0.0.0/0 as a no-op the way an omitted block does."
+  }
 }
 
 variable "database_name" {

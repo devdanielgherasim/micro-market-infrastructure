@@ -1,7 +1,7 @@
-location       = "westeurope"
+location       = "germanywestcentral"
 environment    = "staging"
 acr_sku_name   = "Basic"
-aks_vm_size    = "Standard_F4s_v2"
+aks_vm_size    = "Standard_F2as_v6"
 node_count     = 1
 min_node_count = 1
 max_node_count = 2
