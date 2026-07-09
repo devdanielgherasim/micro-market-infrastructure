@@ -3,16 +3,16 @@ locals {
 }
 
 resource "aws_db_subnet_group" "postgresql" {
-  name       = "${local.cluster_name}-postgresql"
+  name       = local.naming.rds_subnet_group
   subnet_ids = aws_subnet.private[*].id
 
   tags = {
-    Name = "${local.cluster_name}-postgresql"
+    Name = local.naming.rds_subnet_group
   }
 }
 
 resource "aws_security_group" "postgresql" {
-  name        = "${local.cluster_name}-postgresql"
+  name        = local.naming.postgresql_sg
   description = "Managed PostgreSQL access from EKS nodes"
   vpc_id      = aws_vpc.this.id
 
@@ -33,12 +33,12 @@ resource "aws_security_group" "postgresql" {
   }
 
   tags = {
-    Name = "${local.cluster_name}-postgresql"
+    Name = local.naming.postgresql_sg
   }
 }
 
 resource "aws_db_instance" "postgresql" {
-  identifier = "${local.cluster_name}-postgresql"
+  identifier = local.naming.rds_identifier
 
   engine         = "postgres"
   engine_version = "16"
@@ -63,7 +63,7 @@ resource "aws_db_instance" "postgresql" {
   skip_final_snapshot     = var.environment != "prod"
   final_snapshot_identifier = (
     var.environment == "prod"
-    ? "${local.cluster_name}-postgresql-final"
+    ? local.naming.postgresql_final_snap
     : null
   )
 
@@ -71,7 +71,6 @@ resource "aws_db_instance" "postgresql" {
   apply_immediately          = var.environment != "prod"
 
   tags = {
-    Name = "${local.cluster_name}-postgresql"
+    Name = local.naming.rds_identifier
   }
 }
-

@@ -15,7 +15,7 @@ data "aws_iam_policy_document" "eks_cluster_assume" {
 }
 
 resource "aws_iam_role" "eks_cluster" {
-  name               = "${local.cluster_name}-cluster-role"
+  name               = local.naming.iam_role_eks_cluster
   assume_role_policy = data.aws_iam_policy_document.eks_cluster_assume.json
 }
 
@@ -38,7 +38,7 @@ data "aws_iam_policy_document" "eks_nodes_assume" {
 }
 
 resource "aws_iam_role" "eks_nodes" {
-  name               = "${local.cluster_name}-node-role"
+  name               = local.naming.iam_role_eks_nodes
   assume_role_policy = data.aws_iam_policy_document.eks_nodes_assume.json
 }
 
@@ -90,7 +90,7 @@ data "aws_iam_policy_document" "vpc_cni_assume" {
 }
 
 resource "aws_iam_role" "vpc_cni" {
-  name               = "${local.cluster_name}-vpc-cni-role"
+  name               = local.naming.iam_role_vpc_cni
   assume_role_policy = data.aws_iam_policy_document.vpc_cni_assume.json
 }
 
@@ -124,7 +124,7 @@ data "aws_iam_policy_document" "ebs_csi_assume" {
 }
 
 resource "aws_iam_role" "ebs_csi" {
-  name               = "${local.cluster_name}-ebs-csi-role"
+  name               = local.naming.iam_role_ebs_csi
   assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume.json
 }
 

@@ -2,34 +2,56 @@
 # Design: min=max=1 replica (no built-in HA — see ADR-19 consequences), the
 # stock quay.io/keycloak/keycloak image pulled directly (same image the
 # in-cluster CR used; not mirrored into ACR, since it's a public third-party
-# image and no other part of this repo mirrors third-party images). DB/admin
-# credentials are decoded from the existing `keycloak-postgresql`/
-# `keycloak-admin` Key Vault JSON blobs at apply time (secrets.tf) and passed
-# as literal Container App secrets, because Container Apps' native
-# key_vault_secret_id reference maps one KV secret to one env var and cannot
-# split a JSON blob the way ESO's `property:` extraction could — introducing
-# per-field flat KV secrets just for this would be more moving parts than a
-# lab-scope migration warrants. No managed identity is required as a result:
-# the image is public and secrets are resolved by Terraform, not at runtime.
-
-data "azurerm_key_vault_secret" "keycloak_postgresql" {
-  name         = "keycloak-postgresql"
-  key_vault_id = azurerm_key_vault.platform.id
-
-  depends_on = [azurerm_key_vault_secret.platform]
-}
-
-data "azurerm_key_vault_secret" "keycloak_admin" {
-  name         = "keycloak-admin"
-  key_vault_id = azurerm_key_vault.platform.id
-
-  depends_on = [azurerm_key_vault_secret.platform]
-}
+# image and no other part of this repo mirrors third-party images).
+#
+# Secrets are live Key Vault references (key_vault_secret_id), not literal
+# values baked at apply time. A dedicated user-assigned managed identity
+# (keycloak_container_app) with Key Vault Secrets User role lets the
+# Container App runtime pull secrets directly from Key Vault. Rotation only
+# requires updating the Key Vault secret value — the Container App picks up
+# the new value on the next revision restart, no terraform apply needed.
 
 locals {
-  keycloak_hostname     = "auth.danielgherasim.com"
-  keycloak_db_secret    = jsondecode(data.azurerm_key_vault_secret.keycloak_postgresql.value)
-  keycloak_admin_secret = jsondecode(data.azurerm_key_vault_secret.keycloak_admin.value)
+  keycloak_hostname = "auth.danielgherasim.com"
+
+  # Individual flat Key Vault secrets for Keycloak's Container App.
+  # These replace the JSON-blob approach so each secret can be referenced
+  # directly via key_vault_secret_id on the Container App.
+  keycloak_kv_secrets = {
+    "keycloak-db-host"     = azurerm_postgresql_flexible_server.postgresql.fqdn
+    "keycloak-db-port"     = "5432"
+    "keycloak-db-name"     = var.database_name
+    "keycloak-db-username" = local.db_admin_username
+    "keycloak-db-password" = random_password.postgresql_owner.result
+    "keycloak-admin-user"  = "admin"
+    "keycloak-admin-pass"  = random_password.keycloak_admin.result
+  }
+}
+
+resource "azurerm_key_vault_secret" "keycloak" {
+  for_each = local.keycloak_kv_secrets
+
+  name         = each.key
+  value        = each.value
+  key_vault_id = azurerm_key_vault.platform.id
+  content_type = "text/plain"
+
+  depends_on = [azurerm_role_assignment.terraform_key_vault]
+}
+
+# Managed identity for the Keycloak Container App to pull secrets from
+# Key Vault at runtime (not at Terraform apply time).
+resource "azurerm_user_assigned_identity" "keycloak_container_app" {
+  name                = "${local.naming.container_app}-identity"
+  location            = var.secondary_location
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = local.tags
+}
+
+resource "azurerm_role_assignment" "keycloak_kv_secrets_user" {
+  principal_id         = azurerm_user_assigned_identity.keycloak_container_app.principal_id
+  role_definition_name = "Key Vault Secrets User"
+  scope                = azurerm_key_vault.platform.id
 }
 
 resource "azurerm_log_analytics_workspace" "keycloak" {
@@ -39,7 +61,7 @@ resource "azurerm_log_analytics_workspace" "keycloak" {
   # already 36 chars - discovered live when azurerm_container_app.keycloak's
   # name was rejected. RG-scoped uniqueness is enough here (unlike ACR/Key
   # Vault, which need global uniqueness), so "keycloak-<env>" is sufficient.
-  name                = "log-keycloak-${var.environment}"
+  name                = local.naming.log_analytics_workspace
   location            = var.secondary_location
   resource_group_name = azurerm_resource_group.this.name
   sku                 = "PerGB2018"
@@ -51,7 +73,7 @@ resource "azurerm_log_analytics_workspace" "keycloak" {
 # Consumption-only, which is the cheapest tier and matches the "genuine
 # perpetual free consumption grant" this cloud/product was chosen for.
 resource "azurerm_container_app_environment" "keycloak" {
-  name                       = "keycloak-env-${var.environment}"
+  name                       = local.naming.container_app_environment
   location                   = var.secondary_location
   resource_group_name        = azurerm_resource_group.this.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.keycloak.id
@@ -59,39 +81,55 @@ resource "azurerm_container_app_environment" "keycloak" {
 }
 
 resource "azurerm_container_app" "keycloak" {
-  name                         = "keycloak-${var.environment}"
+  name                         = local.naming.container_app
   container_app_environment_id = azurerm_container_app_environment.keycloak.id
   resource_group_name          = azurerm_resource_group.this.name
   revision_mode                = "Single"
   tags                         = local.tags
 
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.keycloak_container_app.id]
+  }
+
+  # Live Key Vault references — the Container App runtime pulls these
+  # directly from Key Vault using the managed identity above. Updating
+  # a secret in Key Vault takes effect on the next revision restart,
+  # no terraform apply required.
   secret {
-    name  = "db-host"
-    value = local.keycloak_db_secret.POSTGRES_HOST
+    name                = "db-host"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-db-host"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "db-port"
-    value = local.keycloak_db_secret.POSTGRES_PORT
+    name                = "db-port"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-db-port"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "db-name"
-    value = local.keycloak_db_secret.POSTGRES_DB
+    name                = "db-name"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-db-name"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "db-username"
-    value = local.keycloak_db_secret.POSTGRES_USER
+    name                = "db-username"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-db-username"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "db-password"
-    value = local.keycloak_db_secret.POSTGRES_PASSWORD
+    name                = "db-password"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-db-password"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "admin-username"
-    value = local.keycloak_admin_secret.username
+    name                = "admin-username"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-admin-user"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
   secret {
-    name  = "admin-password"
-    value = local.keycloak_admin_secret.password
+    name                = "admin-password"
+    key_vault_secret_id = azurerm_key_vault_secret.keycloak["keycloak-admin-pass"].versionless_id
+    identity            = azurerm_user_assigned_identity.keycloak_container_app.id
   }
 
   ingress {
@@ -220,7 +258,7 @@ resource "azurerm_container_app_custom_domain" "keycloak" {
 resource "azurerm_container_app_environment_managed_certificate" "keycloak" {
   count = var.keycloak_custom_domain_enabled ? 1 : 0
 
-  name                         = "keycloak-cert-${var.environment}"
+  name                         = local.naming.container_app_managed_cert
   container_app_environment_id = azurerm_container_app_environment.keycloak.id
   subject_name                 = local.keycloak_hostname
   domain_control_validation    = "CNAME"

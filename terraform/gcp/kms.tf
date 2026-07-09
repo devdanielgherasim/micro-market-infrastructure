@@ -5,7 +5,7 @@
 # (checkov CKV_GCP_84). Mirrors the AWS root's dedicated ECR KMS key
 # (aws/kms.tf) for cross-cloud parity.
 resource "google_kms_key_ring" "artifact_registry" {
-  name     = "${local.cluster_name}-ar"
+  name     = local.naming.artifact_kms_ring
   location = var.region
 }
 
@@ -17,7 +17,7 @@ resource "google_kms_crypto_key" "artifact_registry" {
   #  `terraform destroy`. Mirrors the same tradeoff already made for the
   #  Azure Key Vault (purge_protection_enabled=false) and AWS Secrets
   #  Manager (recovery_window_in_days=0) in this repo.
-  name     = "artifact-registry"
+  name     = local.naming.artifact_kms_key
   key_ring = google_kms_key_ring.artifact_registry.id
 
   rotation_period = "7776000s" # 90 days

@@ -1,8 +1,6 @@
 data "azurerm_client_config" "current" {}
 
 locals {
-  key_vault_name = substr("kv-${replace(var.project_name, "-", "")}-${var.environment}", 0, 24)
-
   platform_secret_payloads = {
     "postgresql-auth" = {
       username          = local.db_admin_username
@@ -62,22 +60,22 @@ locals {
       password = random_password.argocd_redis.result
     }
     "catalog-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
+      username = "catalog_svc"
+      password = random_password.catalog_db.result
       host     = azurerm_postgresql_flexible_server.postgresql.fqdn
       port     = "5432"
       database = var.database_name
     }
     "orders-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
+      username = "orders_svc"
+      password = random_password.orders_db.result
       host     = azurerm_postgresql_flexible_server.postgresql.fqdn
       port     = "5432"
       database = var.database_name
     }
     "audit-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
+      username = "audit_svc"
+      password = random_password.audit_db.result
       host     = azurerm_postgresql_flexible_server.postgresql.fqdn
       port     = "5432"
       database = var.database_name
@@ -91,6 +89,23 @@ locals {
 }
 
 resource "random_password" "postgresql_owner" {
+  length  = 24
+  special = false
+}
+
+# Per-service DB passwords — least-privilege: each microservice gets its own
+# credential instead of sharing the admin/owner password.
+resource "random_password" "catalog_db" {
+  length  = 24
+  special = false
+}
+
+resource "random_password" "orders_db" {
+  length  = 24
+  special = false
+}
+
+resource "random_password" "audit_db" {
   length  = 24
   special = false
 }
@@ -174,7 +189,7 @@ resource "random_password" "argocd_redis" {
 }
 
 resource "azurerm_key_vault" "platform" {
-  name                       = local.key_vault_name
+  name                       = local.naming.key_vault
   location                   = azurerm_resource_group.this.location
   resource_group_name        = azurerm_resource_group.this.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id

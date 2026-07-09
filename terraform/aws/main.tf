@@ -1,7 +1,7 @@
 resource "aws_ecr_repository" "application" {
   for_each = toset(var.application_names)
 
-  name                 = "${var.project_name}/${var.environment}/${each.key}"
+  name                 = local.naming.ecr_application[each.key]
   image_tag_mutability = "IMMUTABLE"
 
   encryption_configuration {

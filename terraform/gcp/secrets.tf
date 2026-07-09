@@ -5,7 +5,7 @@ locals {
       password          = random_password.postgresql_owner.result
       postgres-password = random_password.postgresql_owner.result
       database          = var.database_name
-      host              = google_sql_database_instance.postgresql.public_ip_address
+      host              = google_sql_database_instance.postgresql.private_ip_address
       port              = "5432"
     }
     "keycloak-postgresql" = {
@@ -14,7 +14,7 @@ locals {
       POSTGRES_USER     = local.db_admin_username
       POSTGRES_PASSWORD = random_password.postgresql_owner.result
       POSTGRES_DB       = var.database_name
-      POSTGRES_HOST     = google_sql_database_instance.postgresql.public_ip_address
+      POSTGRES_HOST     = google_sql_database_instance.postgresql.private_ip_address
       POSTGRES_PORT     = "5432"
     }
     "keycloak-admin" = {
@@ -58,23 +58,23 @@ locals {
       password = random_password.argocd_redis.result
     }
     "catalog-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
-      host     = google_sql_database_instance.postgresql.public_ip_address
+      username = "catalog_svc"
+      password = random_password.catalog_db.result
+      host     = google_sql_database_instance.postgresql.private_ip_address
       port     = "5432"
       database = var.database_name
     }
     "orders-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
-      host     = google_sql_database_instance.postgresql.public_ip_address
+      username = "orders_svc"
+      password = random_password.orders_db.result
+      host     = google_sql_database_instance.postgresql.private_ip_address
       port     = "5432"
       database = var.database_name
     }
     "audit-db" = {
-      username = local.db_admin_username
-      password = random_password.postgresql_owner.result
-      host     = google_sql_database_instance.postgresql.public_ip_address
+      username = "audit_svc"
+      password = random_password.audit_db.result
+      host     = google_sql_database_instance.postgresql.private_ip_address
       port     = "5432"
       database = var.database_name
     }
@@ -87,6 +87,23 @@ locals {
 }
 
 resource "random_password" "postgresql_owner" {
+  length  = 24
+  special = false
+}
+
+# Per-service DB passwords — least-privilege: each microservice gets its own
+# credential instead of sharing the admin/owner password.
+resource "random_password" "catalog_db" {
+  length  = 24
+  special = false
+}
+
+resource "random_password" "orders_db" {
+  length  = 24
+  special = false
+}
+
+resource "random_password" "audit_db" {
   length  = 24
   special = false
 }

@@ -81,7 +81,19 @@ variable "azure_policy_enabled" {
 
 variable "api_allowed_cidrs" {
   type        = list(string)
-  description = "CIDR blocks allowed to reach the AKS public API server endpoint. Empty list (default) leaves the API server fully public, matching prior behavior; populate to restrict it to known operator/CI ranges, mirroring aws/variables.tf's api_allowed_cidrs."
+  description = <<-EOT
+    CIDR blocks allowed to reach the AKS public API server endpoint.
+
+    SECURITY: An empty list (default) leaves the API server fully public —
+    this is a known security gap accepted only for initial bootstrapping.
+    For any environment beyond initial setup, populate this with the
+    operator's home/office IP and any CI runner egress IPs, e.g.:
+      api_allowed_cidrs = ["<your-ip>/32", "<ci-runner-ip>/32"]
+    This restricts kubectl/API access to those ranges only.
+
+    A private cluster (api_server_access_profile with private_cluster_enabled)
+    would be the next hardening step but requires a custom VNet + VPN/bastion.
+  EOT
   default     = []
 
   validation {

@@ -1,5 +1,5 @@
 resource "google_container_cluster" "this" {
-  name                     = local.cluster_name
+  name                     = local.naming.gke_cluster
   location                 = var.zone
   project                  = var.project_id
   deletion_protection      = var.deletion_protection
@@ -57,7 +57,7 @@ resource "google_container_cluster" "this" {
 }
 
 resource "google_container_node_pool" "primary_nodes" {
-  name       = "primary-node-pool"
+  name       = local.naming.gke_node_pool
   cluster    = google_container_cluster.this.name
   location   = var.zone
   node_count = var.node_count
@@ -74,7 +74,7 @@ resource "google_container_node_pool" "primary_nodes" {
     disk_type    = var.disk_type
 
     labels = local.common_labels
-    tags   = ["gke-node", "${var.project_name}-${var.environment}"]
+    tags   = ["gke-node", local.naming.gke_cluster]
 
     # See cluster.tf's default node pool config for rationale (checkov
     # CKV_GCP_69 / CKV_GCP_68) — this is the pool that actually runs

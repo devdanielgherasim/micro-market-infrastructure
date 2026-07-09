@@ -1,6 +1,6 @@
 resource "google_artifact_registry_repository" "this" {
   location      = var.region
-  repository_id = local.artifact_registry_name
+  repository_id = local.naming.artifact_registry
   description   = "Docker repository for ${var.project_name} in ${var.environment}"
   format        = "DOCKER"
 

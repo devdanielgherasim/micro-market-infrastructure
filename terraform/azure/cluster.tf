@@ -1,10 +1,10 @@
 resource "azurerm_kubernetes_cluster" "this" {
-  name                = local.cluster_name
+  name                = local.naming.aks
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
-  dns_prefix          = local.cluster_name
+  dns_prefix          = local.naming.aks
   kubernetes_version  = var.kubernetes_version
-  node_resource_group = "rg-${var.project_name}-${var.environment}-aks"
+  node_resource_group = local.naming.aks_node_rg
 
   oidc_issuer_enabled       = true
   workload_identity_enabled = true

@@ -31,7 +31,7 @@ data "aws_iam_policy_document" "irsa_assume_role" {
 }
 
 resource "aws_iam_role" "aws_load_balancer_controller" {
-  name               = "${local.cluster_name}-albc"
+  name               = local.naming.iam_role_aws_load_balancer_controller
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role["aws_load_balancer_controller"].json
 }
 
@@ -41,7 +41,7 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
   #  docs/GitHub); its Describe*/read actions require Resource="*", and
   #  every mutating action is already scoped via aws:ResourceTag/
   #  aws:RequestTag conditions.
-  name        = "${local.cluster_name}-albc"
+  name        = local.naming.iam_policy_aws_load_balancer_controller
   description = "Permissions for AWS Load Balancer Controller on ${local.cluster_name}"
 
   policy = jsonencode({
@@ -213,12 +213,12 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_role" "external_secrets" {
-  name               = "${local.cluster_name}-external-secrets"
+  name               = local.naming.iam_role_external_secrets
   assume_role_policy = data.aws_iam_policy_document.irsa_assume_role["external_secrets"].json
 }
 
 resource "aws_iam_policy" "external_secrets" {
-  name        = "${local.cluster_name}-external-secrets"
+  name        = local.naming.iam_policy_external_secrets
   description = "Read-only access for External Secrets Operator on ${local.cluster_name}"
 
   # Scoped to this project/environment's own secret and parameter namespace

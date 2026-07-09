@@ -12,7 +12,7 @@ resource "random_id" "postgresql_suffix" {
 }
 
 resource "azurerm_postgresql_flexible_server" "postgresql" {
-  name                = substr("pg-${replace(var.project_name, "-", "")}-${var.environment}-${random_id.postgresql_suffix.hex}", 0, 63)
+  name                = local.naming.postgresql_flexible_server
   resource_group_name = azurerm_resource_group.this.name
   location            = var.secondary_location
 
@@ -30,9 +30,23 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   geo_redundant_backup_enabled  = false
   public_network_access_enabled = true
 
+  # Why public_network_access_enabled is true: AKS uses Azure-managed
+  # networking (no user-controlled VNet), so VNet-integrated Postgres
+  # (delegated_subnet_id) is not possible without first creating a custom
+  # VNet for AKS. The firewall rule below restricts access to Azure-internal
+  # services only (the 0.0.0.0→0.0.0.0 range is Azure's special "allow
+  # Azure services" sentinel, NOT an open-internet rule). This means only
+  # traffic originating from within Azure (including AKS pods) can reach
+  # Postgres; external internet clients cannot. A Private Endpoint would be
+  # the next hardening step if a custom AKS VNet is introduced.
+
   tags = local.tags
 }
 
+# Azure's special 0.0.0.0→0.0.0.0 firewall rule: allows only traffic from
+# Azure-internal services (AKS, Container Apps, etc.), not the public
+# internet. See: https://learn.microsoft.com/en-us/azure/postgresql/
+# flexible-server/concepts-firewall-rules#allow-azure-services
 resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   name             = "allow-azure-services"
   server_id        = azurerm_postgresql_flexible_server.postgresql.id
@@ -46,4 +60,3 @@ resource "azurerm_postgresql_flexible_server_database" "microservices" {
   charset   = "UTF8"
   collation = "en_US.utf8"
 }
-

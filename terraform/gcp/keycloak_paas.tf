@@ -44,7 +44,7 @@ locals {
 # min=max=1 instance: no built-in HA, matching ADR-19's cross-cloud decision
 # (Keycloak's JGroups/KUBE_PING clustering has no equivalent here).
 resource "google_cloud_run_v2_service" "keycloak" {
-  name                = "${local.cluster_name}-keycloak"
+  name                = local.naming.cloud_run_keycloak
   location            = var.region
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"

@@ -1,7 +1,7 @@
 locals {
   gcp_workload_identities = {
     external_secrets = {
-      account_id = "eso-${var.environment}"
+      account_id = local.naming.external_secrets_sa
       namespace  = "external-secrets"
       ksa_name   = "external-secrets"
     }
@@ -9,7 +9,7 @@ locals {
 }
 
 resource "google_service_account" "gke_nodes" {
-  account_id   = "gke-${var.project_name}${var.environment}-sa"
+  account_id   = local.naming.gke_nodes_sa
   display_name = "GKE node service account for ${var.project_name}-${var.environment}"
 }
 
@@ -52,7 +52,7 @@ resource "google_service_account_iam_member" "addon_workload_identity_user" {
 resource "google_iam_workload_identity_pool" "gitlab" {
   count = var.gitlab_project_path == "" ? 0 : 1
 
-  workload_identity_pool_id = "gitlab-${var.environment}"
+  workload_identity_pool_id = local.naming.gitlab_pool
   display_name              = "GitLab ${var.environment}"
 }
 
@@ -81,7 +81,7 @@ resource "google_iam_workload_identity_pool_provider" "gitlab" {
 resource "google_service_account" "gitlab_ci" {
   count = var.gitlab_project_path == "" ? 0 : 1
 
-  account_id   = "gitlab-ci-${var.environment}"
+  account_id   = local.naming.gitlab_ci_sa
   display_name = "GitLab CI federated service account for ${local.cluster_name}"
 }
 

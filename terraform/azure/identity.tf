@@ -11,7 +11,7 @@ locals {
 resource "azurerm_user_assigned_identity" "addon" {
   for_each = local.azure_workload_identities
 
-  name                = "${local.cluster_name}-${each.value.name}"
+  name                = local.identity_name[each.key]
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   tags                = local.tags
@@ -36,7 +36,7 @@ resource "azurerm_role_assignment" "external_secrets_key_vault" {
 resource "azurerm_user_assigned_identity" "gitlab_ci" {
   count = var.gitlab_project_path == "" ? 0 : 1
 
-  name                = "${local.cluster_name}-gitlab-ci"
+  name                = local.identity_name.gitlab_ci
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   tags                = local.tags
@@ -74,7 +74,7 @@ resource "azurerm_role_assignment" "gitlab_ci_acr_push" {
 resource "azurerm_user_assigned_identity" "github_ci" {
   count = length(var.github_repos) == 0 ? 0 : 1
 
-  name                = "${local.cluster_name}-github-ci"
+  name                = local.identity_name.github_ci
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   tags                = local.tags

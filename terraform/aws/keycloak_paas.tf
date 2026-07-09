@@ -17,7 +17,7 @@
 # public and no networking changes are needed.
 
 resource "aws_ecr_repository" "keycloak" {
-  name                 = "${var.project_name}/${var.environment}/keycloak"
+  name                 = local.naming.ecr_keycloak
   image_tag_mutability = "IMMUTABLE"
 
   encryption_configuration {
@@ -31,7 +31,7 @@ resource "aws_ecr_repository" "keycloak" {
 }
 
 resource "aws_security_group" "apprunner_keycloak" {
-  name        = "${local.cluster_name}-apprunner-keycloak"
+  name        = local.naming.apprunner_keycloak_sg
   description = "Egress-only SG for the App Runner VPC Connector reaching managed PostgreSQL"
   vpc_id      = aws_vpc.this.id
 
@@ -47,7 +47,7 @@ resource "aws_security_group" "apprunner_keycloak" {
 }
 
 resource "aws_apprunner_vpc_connector" "keycloak" {
-  vpc_connector_name = "${local.cluster_name}-keycloak"
+  vpc_connector_name = local.naming.apprunner_vpc_connector
   subnets            = aws_subnet.private[*].id
   security_groups    = [aws_security_group.apprunner_keycloak.id]
 
@@ -81,7 +81,7 @@ data "aws_iam_policy_document" "apprunner_access_assume" {
 }
 
 resource "aws_iam_role" "apprunner_keycloak_access" {
-  name               = "${local.cluster_name}-apprunner-keycloak-access"
+  name               = local.naming.iam_role_apprunner_keycloak_access
   assume_role_policy = data.aws_iam_policy_document.apprunner_access_assume.json
 }
 
@@ -102,14 +102,14 @@ data "aws_iam_policy_document" "apprunner_instance_assume" {
 }
 
 resource "aws_iam_role" "apprunner_keycloak_instance" {
-  name               = "${local.cluster_name}-apprunner-keycloak-instance"
+  name               = local.naming.iam_role_apprunner_keycloak_instance
   assume_role_policy = data.aws_iam_policy_document.apprunner_instance_assume.json
 }
 
 # Scoped to exactly the two secrets Keycloak needs - same discipline as
 # aws_iam_policy.external_secrets (never "*").
 resource "aws_iam_policy" "apprunner_keycloak_instance" {
-  name        = "${local.cluster_name}-apprunner-keycloak-instance"
+  name        = local.naming.iam_policy_apprunner_keycloak_instance
   description = "Read-only access to Keycloak's DB/admin secrets for the App Runner instance"
 
   policy = jsonencode({
@@ -137,7 +137,7 @@ resource "aws_iam_role_policy_attachment" "apprunner_keycloak_instance" {
 # min_size = max_size = 1: no built-in HA, matching ADR-19's cross-cloud
 # decision (Keycloak's JGroups/KUBE_PING clustering has no equivalent here).
 resource "aws_apprunner_auto_scaling_configuration_version" "keycloak" {
-  auto_scaling_configuration_name = "${local.cluster_name}-keycloak"
+  auto_scaling_configuration_name = local.naming.apprunner_auto_scaling_config
 
   min_size = 1
   max_size = 1
@@ -146,7 +146,7 @@ resource "aws_apprunner_auto_scaling_configuration_version" "keycloak" {
 }
 
 resource "aws_apprunner_service" "keycloak" {
-  service_name = "${local.cluster_name}-keycloak"
+  service_name = local.naming.apprunner_service
 
   auto_scaling_configuration_arn = aws_apprunner_auto_scaling_configuration_version.keycloak.arn
 
