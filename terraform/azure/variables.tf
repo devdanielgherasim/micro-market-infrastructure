@@ -73,6 +73,12 @@ variable "kubernetes_version" {
   default     = null
 }
 
+variable "azure_policy_enabled" {
+  type        = bool
+  description = "Enable the AKS Azure Policy add-on. Disable only for free-quota demo clusters where Gatekeeper's CPU overhead prevents scheduling the platform."
+  default     = true
+}
+
 variable "api_allowed_cidrs" {
   type        = list(string)
   description = "CIDR blocks allowed to reach the AKS public API server endpoint. Empty list (default) leaves the API server fully public, matching prior behavior; populate to restrict it to known operator/CI ranges, mirroring aws/variables.tf's api_allowed_cidrs."
@@ -107,4 +113,16 @@ variable "gitlab_ref" {
   type        = string
   description = "Git ref allowed to use the Azure CI federated credential"
   default     = "main"
+}
+
+variable "github_repos" {
+  type        = list(string)
+  description = "GitHub \"org/repo\" paths allowed to federate into a dedicated Azure CI identity via OIDC (one federated credential per repo, scoped to AcrPush only). Empty list (default) skips CI identity federation."
+  default     = []
+}
+
+variable "github_ref" {
+  type        = string
+  description = "Git ref allowed to use the Azure GitHub CI federated credential, e.g. refs/heads/main"
+  default     = "refs/heads/main"
 }

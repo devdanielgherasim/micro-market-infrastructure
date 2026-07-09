@@ -67,3 +67,33 @@ resource "azurerm_role_assignment" "gitlab_ci_acr_push" {
   role_definition_name = "AcrPush"
   scope                = azurerm_container_registry.this.id
 }
+
+# Dedicated CI identity for GitHub Actions app-repo pipelines (image build/push
+# to ACR only -- these repos don't run Terraform, so unlike gitlab_ci this
+# gets no resource-group Contributor grant, just AcrPush).
+resource "azurerm_user_assigned_identity" "github_ci" {
+  count = length(var.github_repos) == 0 ? 0 : 1
+
+  name                = "${local.cluster_name}-github-ci"
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+  tags                = local.tags
+}
+
+resource "azurerm_federated_identity_credential" "github_ci" {
+  for_each = toset(var.github_repos)
+
+  name                      = "github-${replace(each.value, "/", "-")}"
+  user_assigned_identity_id = azurerm_user_assigned_identity.github_ci[0].id
+  issuer                    = "https://token.actions.githubusercontent.com"
+  audience                  = ["api://AzureADTokenExchange"]
+  subject                   = "repo:${each.value}:ref:${var.github_ref}"
+}
+
+resource "azurerm_role_assignment" "github_ci_acr_push" {
+  count = length(var.github_repos) == 0 ? 0 : 1
+
+  principal_id         = azurerm_user_assigned_identity.github_ci[0].principal_id
+  role_definition_name = "AcrPush"
+  scope                = azurerm_container_registry.this.id
+}

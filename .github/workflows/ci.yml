@@ -1,0 +1,350 @@
+name: Infrastructure CI
+
+# Port of infrastructure/.gitlab-ci.yml's 4 stages (validate, checkov, plan,
+# apply/destroy), translated to GitHub Actions. See
+# plans/2026-07-08-github-actions-migration.md for the migration write-up.
+#
+# checkov and security-scan-gate need no cloud credentials and run on every
+# push/PR, same as they did in GitLab. validate/plan/apply/destroy are
+# structurally complete (cloud login translated to GitHub-native OIDC
+# idioms) but are workflow_dispatch-only for now: this GitHub repo has no
+# cloud secrets/vars configured yet (Phase 5 of the parent migration plan is
+# on hold until Azure infra is deployed for real), so running them
+# automatically on every push would just be a permanently red required
+# check. Running them only on manual dispatch keeps them ready to flip on
+# without blocking anything today.
+
+on:
+  pull_request:
+    paths:
+      - terraform/**
+      - .checkov.yaml
+      - .github/workflows/ci.yml
+      - .github/actions/terraform-cloud-setup/**
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+      - .checkov.yaml
+      - .github/workflows/ci.yml
+      - .github/actions/terraform-cloud-setup/**
+  workflow_dispatch:
+    inputs:
+      cloud_provider:
+        description: Cloud provider to target
+        required: true
+        type: choice
+        default: aws
+        options:
+          - aws
+          - azure
+          - gcp
+      environment:
+        description: Terraform workspace / environment
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - staging
+          - prod
+      project_namespace:
+        description: Value passed as -var project_name to terraform plan/apply
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: read
+  id-token: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VERSION: "1.12.x"
+  AWS_REGION: eu-central-1
+  AWS_TF_STATE_BUCKET: terraform-microservices1691715-state
+  GCP_TF_STATE_BUCKET: terraformmicroservicesstate
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # GitHub-native replacement for GitLab's `include: - template:
+  # Security/Secret-Detection.gitlab-ci.yml` + `secret_detection` job (also
+  # cloud-independent, real today) - matches the platform-gitops/deployment
+  # repos' convention for non-application repos.
+  # ---------------------------------------------------------------------------
+  security-scan-gate:
+    name: Security scan gate
+    uses: devdanielgherasim/micro-market-utilities/.github/workflows/security-scan-gate.yml@main
+    with:
+      codeql-languages: actions
+
+  # ---------------------------------------------------------------------------
+  # checkov: no cloud dependency, faithful port of the GitLab job - runs for
+  # real on every push/PR.
+  # ---------------------------------------------------------------------------
+  checkov:
+    name: Checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Scan Terraform roots
+        run: |
+          set -eu
+          docker run --rm \
+            -v "${PWD}:/work" \
+            -w /work \
+            bridgecrew/checkov:3.3.7 \
+            -d terraform/ \
+            --config-file .checkov.yaml \
+            --compact \
+            --quiet
+
+  # ---------------------------------------------------------------------------
+  # validate: mirrors validate_infrastructure. Manual-only (see header note) -
+  # structurally complete, cloud login wired but unverified until the
+  # corresponding secrets/vars exist on this repo.
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Terraform validate (${{ inputs.cloud_provider }})
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      AZURE_TF_STATE_RESOURCE_GROUP: ${{ vars.AZURE_TF_STATE_RESOURCE_GROUP }}
+      AZURE_TF_STATE_STORAGE_ACCOUNT: ${{ vars.AZURE_TF_STATE_STORAGE_ACCOUNT }}
+      AZURE_TF_STATE_CONTAINER: ${{ vars.AZURE_TF_STATE_CONTAINER }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure cloud provider
+        id: cloud
+        uses: ./.github/actions/terraform-cloud-setup
+        with:
+          cloud_provider: ${{ inputs.cloud_provider }}
+          environment: ${{ inputs.environment }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
+
+      - name: terraform validate
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform validate
+
+      - name: terraform fmt check
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform fmt -check -diff
+
+  # ---------------------------------------------------------------------------
+  # plan: mirrors plan_infrastructure. Manual-only, same caveat as validate.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Terraform plan (${{ inputs.cloud_provider }})
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      AZURE_TF_STATE_RESOURCE_GROUP: ${{ vars.AZURE_TF_STATE_RESOURCE_GROUP }}
+      AZURE_TF_STATE_STORAGE_ACCOUNT: ${{ vars.AZURE_TF_STATE_STORAGE_ACCOUNT }}
+      AZURE_TF_STATE_CONTAINER: ${{ vars.AZURE_TF_STATE_CONTAINER }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure cloud provider
+        id: cloud
+        uses: ./.github/actions/terraform-cloud-setup
+        with:
+          cloud_provider: ${{ inputs.cloud_provider }}
+          environment: ${{ inputs.environment }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
+
+      - name: terraform workspace select
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        env:
+          WORKSPACE: ${{ steps.cloud.outputs.workspace }}
+        run: |
+          set -eu
+          if ! terraform workspace list | grep -q "${WORKSPACE}"; then
+            terraform workspace new "${WORKSPACE}"
+          else
+            terraform workspace select "${WORKSPACE}"
+          fi
+          echo "Current workspace: $(terraform workspace show)"
+
+      - name: terraform plan
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: |
+          set -eu
+          terraform plan \
+            --var-file="./tfvars_files/${{ inputs.environment }}.tfvars" \
+            -var project_name="${{ inputs.project_namespace }}" \
+            -out=tfplan
+          terraform show -json tfplan > plan.json
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tfplan-${{ inputs.cloud_provider }}-${{ inputs.environment }}
+          path: |
+            terraform/${{ inputs.cloud_provider }}/tfplan
+            terraform/${{ inputs.cloud_provider }}/plan.json
+          retention-days: 7
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # apply: mirrors apply_infrastructure (`when: manual`). The `environment:`
+  # gate below is where GitHub Environment protection rules (required
+  # reviewers) can be attached later for the same manual-approval intent.
+  # ---------------------------------------------------------------------------
+  apply:
+    name: Terraform apply (${{ inputs.cloud_provider }})
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: plan
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      AZURE_TF_STATE_RESOURCE_GROUP: ${{ vars.AZURE_TF_STATE_RESOURCE_GROUP }}
+      AZURE_TF_STATE_STORAGE_ACCOUNT: ${{ vars.AZURE_TF_STATE_STORAGE_ACCOUNT }}
+      AZURE_TF_STATE_CONTAINER: ${{ vars.AZURE_TF_STATE_CONTAINER }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure cloud provider
+        id: cloud
+        uses: ./.github/actions/terraform-cloud-setup
+        with:
+          cloud_provider: ${{ inputs.cloud_provider }}
+          environment: ${{ inputs.environment }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
+
+      - name: terraform workspace select
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        env:
+          WORKSPACE: ${{ steps.cloud.outputs.workspace }}
+        run: |
+          set -eu
+          if ! terraform workspace list | grep -q "${WORKSPACE}"; then
+            terraform workspace new "${WORKSPACE}"
+          else
+            terraform workspace select "${WORKSPACE}"
+          fi
+          echo "Current workspace: $(terraform workspace show)"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: tfplan-${{ inputs.cloud_provider }}-${{ inputs.environment }}
+          path: terraform/${{ inputs.cloud_provider }}
+
+      - name: terraform apply
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform apply -auto-approve tfplan
+
+  # ---------------------------------------------------------------------------
+  # destroy: mirrors destroy_infrastructure (`when: manual`). Independent of
+  # plan/apply (matches GitLab: destroy re-selects the workspace itself and
+  # doesn't consume a plan artifact).
+  # ---------------------------------------------------------------------------
+  destroy:
+    name: Terraform destroy (${{ inputs.cloud_provider }})
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs: validate
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      AZURE_TF_STATE_RESOURCE_GROUP: ${{ vars.AZURE_TF_STATE_RESOURCE_GROUP }}
+      AZURE_TF_STATE_STORAGE_ACCOUNT: ${{ vars.AZURE_TF_STATE_STORAGE_ACCOUNT }}
+      AZURE_TF_STATE_CONTAINER: ${{ vars.AZURE_TF_STATE_CONTAINER }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure cloud provider
+        id: cloud
+        uses: ./.github/actions/terraform-cloud-setup
+        with:
+          cloud_provider: ${{ inputs.cloud_provider }}
+          environment: ${{ inputs.environment }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
+
+      - name: terraform workspace select
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        env:
+          WORKSPACE: ${{ steps.cloud.outputs.workspace }}
+        run: |
+          set -eu
+          if ! terraform workspace list | grep -q "${WORKSPACE}"; then
+            echo "Workspace ${WORKSPACE} does not exist. Cannot destroy a non-existent workspace." >&2
+            exit 1
+          fi
+          terraform workspace select "${WORKSPACE}"
+          echo "Current workspace: $(terraform workspace show)"
+
+      - name: terraform destroy
+        working-directory: terraform/${{ inputs.cloud_provider }}
+        run: |
+          terraform destroy -auto-approve \
+            --var-file="./tfvars_files/${{ inputs.environment }}.tfvars"
