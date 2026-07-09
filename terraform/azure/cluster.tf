@@ -14,7 +14,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   # in-cluster policy enforcement (checkov CKV_AZURE_116).
   automatic_upgrade_channel = "patch"
   node_os_upgrade_channel   = "NodeImage"
-  azure_policy_enabled      = true
+  azure_policy_enabled      = var.azure_policy_enabled
 
   # Fully public by default (matches historical behavior). Populate
   # var.api_allowed_cidrs to restrict the API server to known operator/CI

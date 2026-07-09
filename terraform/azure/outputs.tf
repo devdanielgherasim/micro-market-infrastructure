@@ -70,3 +70,8 @@ output "gitlab_ci_client_id" {
   description = "Azure workload identity client ID for GitLab CI, when enabled"
   value       = try(azurerm_user_assigned_identity.gitlab_ci[0].client_id, null)
 }
+
+output "github_ci_client_id" {
+  description = "Azure workload identity client ID for GitHub Actions CI, when enabled"
+  value       = try(azurerm_user_assigned_identity.github_ci[0].client_id, null)
+}
