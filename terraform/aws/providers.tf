@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7"
     }
+    postgresql = {
+      source  = "cyrilgdn/postgresql"
+      version = "~> 1.27"
+    }
   }
 
   # Bucket/region are provided at init time via -backend-config (see ../apply.sh).
@@ -30,4 +34,16 @@ provider "aws" {
   default_tags {
     tags = local.tags
   }
+}
+
+provider "postgresql" {
+  scheme          = "awspostgres"
+  host            = aws_db_instance.postgresql.address
+  port            = aws_db_instance.postgresql.port
+  database        = var.database_name
+  username        = local.db_admin_username
+  password        = random_password.postgresql_owner.result
+  sslmode         = "require"
+  superuser       = false
+  connect_timeout = 15
 }

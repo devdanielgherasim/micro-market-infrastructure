@@ -13,6 +13,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7"
     }
+    postgresql = {
+      source  = "cyrilgdn/postgresql"
+      version = "~> 1.27"
+    }
   }
 
   backend "azurerm" {
@@ -25,4 +29,15 @@ terraform {
 
 provider "azurerm" {
   features {}
+}
+
+provider "postgresql" {
+  host            = azurerm_postgresql_flexible_server.postgresql.fqdn
+  port            = 5432
+  database        = var.database_name
+  username        = local.db_admin_username
+  password        = random_password.postgresql_owner.result
+  sslmode         = "require"
+  superuser       = false
+  connect_timeout = 15
 }

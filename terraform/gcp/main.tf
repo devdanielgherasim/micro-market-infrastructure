@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7"
     }
+    postgresql = {
+      source  = "cyrilgdn/postgresql"
+      version = "~> 1.27"
+    }
   }
 
   backend "gcs" {}
@@ -29,5 +33,17 @@ provider "google-beta" {
   project = var.project_id
   region  = var.region
   zone    = var.zone
+}
+
+provider "postgresql" {
+  scheme          = "gcppostgres"
+  host            = google_sql_database_instance.postgresql.connection_name
+  port            = 5432
+  database        = var.database_name
+  username        = google_sql_user.postgresql_owner.name
+  password        = random_password.postgresql_owner.result
+  sslmode         = "require"
+  superuser       = false
+  connect_timeout = 15
 }
 
