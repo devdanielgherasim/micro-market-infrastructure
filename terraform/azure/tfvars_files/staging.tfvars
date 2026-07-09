@@ -7,6 +7,8 @@ node_count     = 2
 min_node_count = 2
 max_node_count = 2
 
+keycloak_custom_domain_enabled = false
+
 tags = {
   ManagedBy   = "Terraform"
   Environment = "Staging"

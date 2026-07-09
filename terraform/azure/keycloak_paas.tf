@@ -12,7 +12,7 @@
 # the new value on the next revision restart, no terraform apply needed.
 
 locals {
-  keycloak_hostname = "auth.danielgherasim.com"
+  keycloak_hostname = var.environment == "prod" ? "auth.danielgherasim.com" : "auth-${var.environment}.danielgherasim.com"
 
   # Individual flat Key Vault secrets for Keycloak's Container App.
   # These replace the JSON-blob approach so each secret can be referenced
