@@ -26,32 +26,18 @@ resource "azurerm_postgresql_flexible_server" "postgresql" {
   # Azure Postgres Flexible Server enforces a hard floor of 7 days (unlike
   # AWS RDS, which allows 1) - 7 for every environment, since going lower
   # isn't possible regardless of environment.
-  backup_retention_days         = 7
-  geo_redundant_backup_enabled  = false
-  public_network_access_enabled = true
+  backup_retention_days        = 7
+  geo_redundant_backup_enabled = false
 
-  # Why public_network_access_enabled is true: AKS uses Azure-managed
-  # networking (no user-controlled VNet), so VNet-integrated Postgres
-  # (delegated_subnet_id) is not possible without first creating a custom
-  # VNet for AKS. The firewall rule below restricts access to Azure-internal
-  # services only (the 0.0.0.0→0.0.0.0 range is Azure's special "allow
-  # Azure services" sentinel, NOT an open-internet rule). This means only
-  # traffic originating from within Azure (including AKS pods) can reach
-  # Postgres; external internet clients cannot. A Private Endpoint would be
-  # the next hardening step if a custom AKS VNet is introduced.
+  # Private access only: AKS and the Keycloak Container App reach PostgreSQL
+  # through the peered/integrated VNets and the private DNS zone in network.tf.
+  delegated_subnet_id           = azurerm_subnet.postgresql.id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgresql.id
+  public_network_access_enabled = false
 
   tags = local.tags
-}
 
-# Azure's special 0.0.0.0→0.0.0.0 firewall rule: allows only traffic from
-# Azure-internal services (AKS, Container Apps, etc.), not the public
-# internet. See: https://learn.microsoft.com/en-us/azure/postgresql/
-# flexible-server/concepts-firewall-rules#allow-azure-services
-resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
-  name             = "allow-azure-services"
-  server_id        = azurerm_postgresql_flexible_server.postgresql.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "0.0.0.0"
+  depends_on = [azurerm_private_dns_zone_virtual_network_link.postgresql]
 }
 
 resource "azurerm_postgresql_flexible_server_database" "microservices" {

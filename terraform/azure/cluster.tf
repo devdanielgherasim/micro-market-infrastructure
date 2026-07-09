@@ -35,6 +35,7 @@ resource "azurerm_kubernetes_cluster" "this" {
     vm_size              = var.aks_vm_size
     os_disk_size_gb      = 50
     auto_scaling_enabled = true
+    vnet_subnet_id       = azurerm_subnet.aks.id
 
     upgrade_settings {
       max_surge = "10%"

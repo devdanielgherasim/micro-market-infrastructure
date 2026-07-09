@@ -77,6 +77,7 @@ resource "azurerm_container_app_environment" "keycloak" {
   location                   = var.secondary_location
   resource_group_name        = azurerm_resource_group.this.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.keycloak.id
+  infrastructure_subnet_id   = azurerm_subnet.container_app_environment.id
   tags                       = local.tags
 }
 

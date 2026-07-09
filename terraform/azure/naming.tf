@@ -21,6 +21,18 @@ locals {
 
     key_vault = substr("kv-${local.short_project}-${var.environment}", 0, 24)
 
+    aks_virtual_network        = "vnet-${var.project_name}-${var.environment}-aks"
+    postgresql_virtual_network = "vnet-${var.project_name}-${var.environment}-postgresql"
+    aks_subnet                 = "snet-aks-${var.environment}"
+    postgresql_subnet          = "snet-postgresql-${var.environment}"
+    container_app_subnet       = "snet-container-apps-${var.environment}"
+
+    aks_to_postgresql_vnet_peering       = "peer-aks-to-postgresql-${var.environment}"
+    postgresql_to_aks_vnet_peering       = "peer-postgresql-to-aks-${var.environment}"
+    postgresql_private_dns_zone          = "private.postgres.database.azure.com"
+    postgresql_private_dns_link_aks      = "pdnslink-postgresql-aks-${var.environment}"
+    postgresql_private_dns_link_postgres = "pdnslink-postgresql-postgres-${var.environment}"
+
     log_analytics_workspace    = "log-keycloak-${var.environment}"
     container_app_environment  = "keycloak-env-${var.environment}"
     container_app              = "keycloak-${var.environment}"

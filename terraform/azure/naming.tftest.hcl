@@ -68,6 +68,117 @@ run "key_vault_length_and_charset" {
   }
 }
 
+run "virtual_network_names_length_and_charset" {
+  command = plan
+
+  assert {
+    condition     = length(local.naming.aks_virtual_network) >= 2 && length(local.naming.aks_virtual_network) <= 64
+    error_message = "aks_virtual_network name must be 2-64 chars for Microsoft.Network/virtualNetworks"
+  }
+
+  assert {
+    condition     = length(local.naming.postgresql_virtual_network) >= 2 && length(local.naming.postgresql_virtual_network) <= 64
+    error_message = "postgresql_virtual_network name must be 2-64 chars for Microsoft.Network/virtualNetworks"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.aks_virtual_network))
+    error_message = "aks_virtual_network name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.postgresql_virtual_network))
+    error_message = "postgresql_virtual_network name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+}
+
+run "subnet_names_length_and_charset" {
+  command = plan
+
+  assert {
+    condition     = length(local.naming.aks_subnet) >= 1 && length(local.naming.aks_subnet) <= 80
+    error_message = "aks_subnet name must be 1-80 chars for Microsoft.Network/virtualNetworks/subnets"
+  }
+
+  assert {
+    condition     = length(local.naming.postgresql_subnet) >= 1 && length(local.naming.postgresql_subnet) <= 80
+    error_message = "postgresql_subnet name must be 1-80 chars for Microsoft.Network/virtualNetworks/subnets"
+  }
+
+  assert {
+    condition     = length(local.naming.container_app_subnet) >= 1 && length(local.naming.container_app_subnet) <= 80
+    error_message = "container_app_subnet name must be 1-80 chars for Microsoft.Network/virtualNetworks/subnets"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.aks_subnet))
+    error_message = "aks_subnet name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.postgresql_subnet))
+    error_message = "postgresql_subnet name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.container_app_subnet))
+    error_message = "container_app_subnet name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+}
+
+run "vnet_peering_names_length_and_charset" {
+  command = plan
+
+  assert {
+    condition     = length(local.naming.aks_to_postgresql_vnet_peering) >= 1 && length(local.naming.aks_to_postgresql_vnet_peering) <= 80
+    error_message = "aks_to_postgresql_vnet_peering name must be 1-80 chars for Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+  }
+
+  assert {
+    condition     = length(local.naming.postgresql_to_aks_vnet_peering) >= 1 && length(local.naming.postgresql_to_aks_vnet_peering) <= 80
+    error_message = "postgresql_to_aks_vnet_peering name must be 1-80 chars for Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.aks_to_postgresql_vnet_peering))
+    error_message = "aks_to_postgresql_vnet_peering name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.postgresql_to_aks_vnet_peering))
+    error_message = "postgresql_to_aks_vnet_peering name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+}
+
+run "postgresql_private_dns_names_length_and_charset" {
+  command = plan
+
+  assert {
+    condition     = local.naming.postgresql_private_dns_zone == "private.postgres.database.azure.com"
+    error_message = "postgresql_private_dns_zone must use Azure PostgreSQL Flexible Server's private access zone"
+  }
+
+  assert {
+    condition     = length(local.naming.postgresql_private_dns_link_aks) >= 1 && length(local.naming.postgresql_private_dns_link_aks) <= 80
+    error_message = "postgresql_private_dns_link_aks name must be 1-80 chars for Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+  }
+
+  assert {
+    condition     = length(local.naming.postgresql_private_dns_link_postgres) >= 1 && length(local.naming.postgresql_private_dns_link_postgres) <= 80
+    error_message = "postgresql_private_dns_link_postgres name must be 1-80 chars for Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.postgresql_private_dns_link_aks))
+    error_message = "postgresql_private_dns_link_aks name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+
+  assert {
+    condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9_.-]*[A-Za-z0-9_]$", local.naming.postgresql_private_dns_link_postgres))
+    error_message = "postgresql_private_dns_link_postgres name must start alphanumeric, end alphanumeric or underscore, and contain only alphanumerics, underscores, periods, or hyphens"
+  }
+}
+
 run "log_analytics_workspace_length_and_charset" {
   command = plan
 
