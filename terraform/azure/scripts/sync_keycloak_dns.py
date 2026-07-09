@@ -56,18 +56,34 @@ def main() -> int:
     hostname = values["ingress"][0]["fqdn"]
     verification_id = values["custom_domain_verification_id"]
 
+    # Container App name is "keycloak-<environment>" (naming.tf's
+    # local.naming.container_app) - derive the env instead of taking a CLI
+    # arg, since apply.sh already ran against a specific workspace/tfvars
+    # and this script has no other way to know which one without re-parsing
+    # tfvars. Must match keycloak_paas.tf's local.keycloak_hostname exactly
+    # (auth.<domain> for prod, auth-<env>.<domain> otherwise) - both derive
+    # from the same var.environment, so keeping this logic in lockstep is
+    # load-bearing, not cosmetic.
+    container_app_name = values["name"]
+    prefix = "keycloak-"
+    if not container_app_name.startswith(prefix):
+        raise SystemExit(f"unexpected container app name {container_app_name!r}, expected prefix {prefix!r}")
+    environment = container_app_name[len(prefix):]
+    dns_name = "auth.danielgherasim.com" if environment == "prod" else f"auth-{environment}.danielgherasim.com"
+    txt_name = f"asuid.{dns_name}"
+
     original = VALUES_FILE.read_text()
-    updated = replace_target(original, "auth.danielgherasim.com", hostname)
-    updated = replace_target(updated, "asuid.auth.danielgherasim.com", verification_id)
+    updated = replace_target(original, dns_name, hostname)
+    updated = replace_target(updated, txt_name, verification_id)
 
     if updated == original:
         print(f"[sync-keycloak-dns] already up to date ({VALUES_FILE})")
         return 0
 
     VALUES_FILE.write_text(updated)
-    print(f"[sync-keycloak-dns] updated {VALUES_FILE}")
-    print(f"  auth.danielgherasim.com      -> {hostname}")
-    print(f"  asuid.auth.danielgherasim.com -> {verification_id}")
+    print(f"[sync-keycloak-dns] updated {VALUES_FILE} (environment: {environment})")
+    print(f"  {dns_name} -> {hostname}")
+    print(f"  {txt_name} -> {verification_id}")
     print("[sync-keycloak-dns] review the diff, then commit/push platform-gitops and let ArgoCD sync.")
     return 0
 
