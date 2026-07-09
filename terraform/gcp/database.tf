@@ -42,9 +42,65 @@ resource "google_sql_database_instance" "postgresql" {
       enabled = var.environment == "prod"
     }
 
+    database_flags {
+      name  = "cloudsql.enable_pgaudit"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_duration"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_error_verbosity"
+      value = "default"
+    }
+
+    database_flags {
+      name  = "log_hostname"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_min_error_statement"
+      value = "error"
+    }
+
+    database_flags {
+      name  = "log_min_messages"
+      value = "error"
+    }
+
+    database_flags {
+      name  = "log_statement"
+      value = "ddl"
+    }
+
     ip_configuration {
       ipv4_enabled    = false
       private_network = data.google_compute_network.default.id
+      ssl_mode        = "ENCRYPTED_ONLY"
     }
   }
 

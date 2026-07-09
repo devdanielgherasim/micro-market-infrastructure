@@ -111,7 +111,7 @@ jobs:
   # corresponding secrets/vars exist on this repo.
   # ---------------------------------------------------------------------------
   validate:
-    name: Terraform validate (${{ inputs.cloud_provider }})
+    name: Terraform validate (${{ github.event.inputs.cloud_provider }})
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     env:
@@ -133,8 +133,8 @@ jobs:
         id: cloud
         uses: ./.github/actions/terraform-cloud-setup
         with:
-          cloud_provider: ${{ inputs.cloud_provider }}
-          environment: ${{ inputs.environment }}
+          cloud_provider: ${{ github.event.inputs.cloud_provider }}
+          environment: ${{ github.event.inputs.environment }}
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -142,22 +142,22 @@ jobs:
           terraform_wrapper: false
 
       - name: terraform init
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
 
       - name: terraform validate
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform validate
 
       - name: terraform fmt check
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform fmt -check -diff
 
   # ---------------------------------------------------------------------------
   # plan: mirrors plan_infrastructure. Manual-only, same caveat as validate.
   # ---------------------------------------------------------------------------
   plan:
-    name: Terraform plan (${{ inputs.cloud_provider }})
+    name: Terraform plan (${{ github.event.inputs.cloud_provider }})
     if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: validate
     runs-on: ubuntu-latest
@@ -180,8 +180,8 @@ jobs:
         id: cloud
         uses: ./.github/actions/terraform-cloud-setup
         with:
-          cloud_provider: ${{ inputs.cloud_provider }}
-          environment: ${{ inputs.environment }}
+          cloud_provider: ${{ github.event.inputs.cloud_provider }}
+          environment: ${{ github.event.inputs.environment }}
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -189,11 +189,11 @@ jobs:
           terraform_wrapper: false
 
       - name: terraform init
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
 
       - name: terraform workspace select
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         env:
           WORKSPACE: ${{ steps.cloud.outputs.workspace }}
         run: |
@@ -206,21 +206,21 @@ jobs:
           echo "Current workspace: $(terraform workspace show)"
 
       - name: terraform plan
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: |
           set -eu
           terraform plan \
-            --var-file="./tfvars_files/${{ inputs.environment }}.tfvars" \
-            -var project_name="${{ inputs.project_namespace }}" \
+            --var-file="./tfvars_files/${{ github.event.inputs.environment }}.tfvars" \
+            -var project_name="${{ github.event.inputs.project_namespace }}" \
             -out=tfplan
           terraform show -json tfplan > plan.json
 
       - uses: actions/upload-artifact@v7
         with:
-          name: tfplan-${{ inputs.cloud_provider }}-${{ inputs.environment }}
+          name: tfplan-${{ github.event.inputs.cloud_provider }}-${{ github.event.inputs.environment }}
           path: |
-            terraform/${{ inputs.cloud_provider }}/tfplan
-            terraform/${{ inputs.cloud_provider }}/plan.json
+            terraform/${{ github.event.inputs.cloud_provider }}/tfplan
+            terraform/${{ github.event.inputs.cloud_provider }}/plan.json
           retention-days: 7
           if-no-files-found: error
 
@@ -230,10 +230,10 @@ jobs:
   # reviewers) can be attached later for the same manual-approval intent.
   # ---------------------------------------------------------------------------
   apply:
-    name: Terraform apply (${{ inputs.cloud_provider }})
+    name: Terraform apply (${{ github.event.inputs.cloud_provider }})
     if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: plan
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     env:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
@@ -254,8 +254,8 @@ jobs:
         id: cloud
         uses: ./.github/actions/terraform-cloud-setup
         with:
-          cloud_provider: ${{ inputs.cloud_provider }}
-          environment: ${{ inputs.environment }}
+          cloud_provider: ${{ github.event.inputs.cloud_provider }}
+          environment: ${{ github.event.inputs.environment }}
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -263,11 +263,11 @@ jobs:
           terraform_wrapper: false
 
       - name: terraform init
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
 
       - name: terraform workspace select
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         env:
           WORKSPACE: ${{ steps.cloud.outputs.workspace }}
         run: |
@@ -281,11 +281,11 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: tfplan-${{ inputs.cloud_provider }}-${{ inputs.environment }}
-          path: terraform/${{ inputs.cloud_provider }}
+          name: tfplan-${{ github.event.inputs.cloud_provider }}-${{ github.event.inputs.environment }}
+          path: terraform/${{ github.event.inputs.cloud_provider }}
 
       - name: terraform apply
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform apply -auto-approve tfplan
 
   # ---------------------------------------------------------------------------
@@ -294,10 +294,10 @@ jobs:
   # doesn't consume a plan artifact).
   # ---------------------------------------------------------------------------
   destroy:
-    name: Terraform destroy (${{ inputs.cloud_provider }})
+    name: Terraform destroy (${{ github.event.inputs.cloud_provider }})
     if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: validate
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     env:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
@@ -318,8 +318,8 @@ jobs:
         id: cloud
         uses: ./.github/actions/terraform-cloud-setup
         with:
-          cloud_provider: ${{ inputs.cloud_provider }}
-          environment: ${{ inputs.environment }}
+          cloud_provider: ${{ github.event.inputs.cloud_provider }}
+          environment: ${{ github.event.inputs.environment }}
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -327,11 +327,11 @@ jobs:
           terraform_wrapper: false
 
       - name: terraform init
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: terraform init -reconfigure ${{ steps.cloud.outputs.backend_args }}
 
       - name: terraform workspace select
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         env:
           WORKSPACE: ${{ steps.cloud.outputs.workspace }}
         run: |
@@ -344,7 +344,7 @@ jobs:
           echo "Current workspace: $(terraform workspace show)"
 
       - name: terraform destroy
-        working-directory: terraform/${{ inputs.cloud_provider }}
+        working-directory: terraform/${{ github.event.inputs.cloud_provider }}
         run: |
           terraform destroy -auto-approve \
-            --var-file="./tfvars_files/${{ inputs.environment }}.tfvars"
+            --var-file="./tfvars_files/${{ github.event.inputs.environment }}.tfvars"

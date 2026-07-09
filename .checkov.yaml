@@ -21,6 +21,12 @@
 skip-check:
   # --- AWS ---
 
+  # Checkov 3.3.7's static supported-version table lags the Kubernetes/EKS
+  # release train. The version remains controlled by `var.kubernetes_version`
+  # so operators can pin to the cloud-supported version during an apply; this
+  # CI finding should not force an older default just to satisfy a stale table.
+  - CKV_AWS_339
+
   # Public EKS API endpoint access is variable-gated: staging/prod default to
   # an empty CIDR list (private-only) and a Terraform `validation` block in
   # terraform/aws/variables.tf hard-fails any attempt to set 0.0.0.0/0 outside
@@ -56,6 +62,24 @@ skip-check:
   # the logs.<region>.amazonaws.com service principal explicit permission,
   # not worth the added complexity for this data.
   - CKV_AWS_158
+
+  # RDS enhanced monitoring requires an additional IAM role plus per-instance
+  # monitoring stream. For this demo-sized managed Postgres instance, ordinary
+  # CloudWatch metrics and PostgreSQL log exports are enough; adding enhanced
+  # monitoring is a production-hardening item, not required for the lab gate.
+  - CKV_AWS_118
+  # Multi-AZ RDS is intentionally not enabled outside a production hardening
+  # pass: the environment is operated one cloud at a time and destroyed after
+  # demos, while Multi-AZ doubles the database footprint/cost.
+  - CKV_AWS_157
+  # Performance Insights is useful operationally but not necessary for this
+  # free/low-cost dissertation environment. PostgreSQL logs are exported to
+  # CloudWatch; deeper query performance tooling is deferred to production.
+  - CKV_AWS_353
+  # Full statement logging on RDS needs a custom DB parameter group and creates
+  # noisy logs that can include query literals. This lab exports PostgreSQL
+  # engine logs but does not force all query statements into CloudWatch.
+  - CKV2_AWS_30
 
   # --- Azure (AKS) ---
 
@@ -112,6 +136,24 @@ skip-check:
   # planning for a single small lab cluster, and Istio ambient's ztunnel
   # dataplane does not require Azure CNI specifically.
   - CKV2_AZURE_29
+  # Dedicated subnet NSGs are omitted deliberately: AKS node exposure is
+  # controlled by Kubernetes/Istio policies and cloud load balancers, while
+  # PostgreSQL Flexible Server and Container Apps Environment subnets are
+  # delegated service subnets with provider-level controls. Adding empty NSGs
+  # would satisfy static analysis without materially changing this lab design.
+  - CKV2_AZURE_31
+
+  # --- Azure (PostgreSQL Flexible Server) ---
+
+  # Geo-redundant backup is a paid HA/data-resiliency choice. This project
+  # prioritizes free-tier/low-cost demo environments and accepts same-region
+  # backups for the disposable dev cycle.
+  - CKV_AZURE_136
+  # The server already uses private VNet-injected Flexible Server networking
+  # (`delegated_subnet_id`, private DNS, public_network_access_enabled=false).
+  # Checkov's private-endpoint check models the alternate Private Endpoint
+  # topology and false-positives on this valid private-access mode.
+  - CKV2_AZURE_57
 
   # --- Azure (ACR) ---
 
@@ -191,3 +233,15 @@ skip-check:
   # not silently dropped - would need a dedicated VPC root to close properly.
   - CKV_GCP_25
   - CKV_GCP_64
+
+  # --- GCP (Cloud SQL for PostgreSQL) ---
+
+  # Google provider v6 replaced the old `require_ssl` argument with
+  # `ip_configuration.ssl_mode`; this root sets `ssl_mode = "ENCRYPTED_ONLY"`.
+  # Checkov 3.3.7 still keys CKV_GCP_6 off the removed argument, so this is a
+  # static-analyzer compatibility skip, not an accepted plaintext-connection gap.
+  - CKV_GCP_6
+  # Cloud SQL major-version cadence can lag upstream PostgreSQL. This root pins
+  # POSTGRES_16 intentionally for parity with AWS/Azure Postgres 16 and the
+  # Quarkus/Testcontainers development baseline.
+  - CKV_GCP_79

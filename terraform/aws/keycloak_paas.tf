@@ -36,10 +36,18 @@ resource "aws_security_group" "apprunner_keycloak" {
   vpc_id      = aws_vpc.this.id
 
   egress {
-    description = "Allow outbound to VPC + internet (Secrets Manager, ECR, RDS)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "PostgreSQL to RDS through the VPC connector"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "HTTPS for AWS APIs and image pulls through NAT"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
