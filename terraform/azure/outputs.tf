@@ -87,8 +87,8 @@ output "github_ci_client_id" {
 }
 
 output "keycloak_default_hostname" {
-  description = "Container Apps default FQDN for Keycloak, used as the keycloak-dns DNSEndpoint's CNAME target until the custom domain is bound"
-  value       = azurerm_container_app.keycloak.latest_revision_fqdn
+  description = "Container Apps default FQDN for Keycloak, used as the keycloak-dns DNSEndpoint's CNAME target until the custom domain is bound. Uses the stable per-app ingress FQDN, not latest_revision_fqdn - the latter is revision-scoped and changes on every new revision (e.g. every apply that touches the container spec), which was silently breaking the DNS CNAME on redeploy."
+  value       = azurerm_container_app.keycloak.ingress[0].fqdn
 }
 
 output "keycloak_custom_domain_verification_id" {
