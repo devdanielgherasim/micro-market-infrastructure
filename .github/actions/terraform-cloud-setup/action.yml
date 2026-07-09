@@ -5,13 +5,9 @@ description: >-
   since the azurerm provider reads GitHub Actions OIDC natively, Workload
   Identity Federation for GCP) and computes the terraform init
   -backend-config args and workspace name for that provider/environment.
-  Mirrors the before_script_common cloud-branching block in
-  infrastructure/.gitlab-ci.yml, translated from GitLab's own OIDC token to
-  GitHub Actions' OIDC idioms. Cloud login only succeeds once the
-  corresponding secrets/vars are configured on the repo (tracked separately,
-  see plans/2026-07-08-github-actions-migration.md) - until then the guard
-  clauses below fail fast with a clear message instead of silently
-  proceeding with empty credentials.
+  Cloud login only succeeds once the corresponding secrets/vars are configured
+  on the repo; until then the guard clauses below fail fast with a clear
+  message instead of silently proceeding with empty credentials.
 inputs:
   cloud_provider:
     description: One of aws, azure, gcp
@@ -31,14 +27,14 @@ runs:
   steps:
     - name: Assume AWS role via GitHub OIDC
       if: inputs.cloud_provider == 'aws'
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c # v4
       with:
         role-to-assume: ${{ env.AWS_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Authenticate to GCP via Workload Identity Federation
       if: inputs.cloud_provider == 'gcp'
-      uses: google-github-actions/auth@v2
+      uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
       with:
         workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
@@ -63,11 +59,8 @@ runs:
             : "${AWS_REGION:?Set AWS_REGION (repo variable)}"
             : "${AWS_TF_STATE_BUCKET:?Set AWS_TF_STATE_BUCKET (repo variable)}"
             BACKEND_ARGS="-backend-config=bucket=${AWS_TF_STATE_BUCKET} -backend-config=key=aws/${WORKSPACE}/terraform.tfstate -backend-config=region=${AWS_REGION} -backend-config=use_lockfile=true"
-            # terraform/aws/variables.tf declares these two TF vars (region,
-            # gitlab_ci_role_arn - name inherited as-is from the pre-migration
-            # Terraform, see plan Notes) which the AWS root reads directly.
             echo "TF_VAR_region=${AWS_REGION}" >> "${GITHUB_ENV}"
-            echo "TF_VAR_gitlab_ci_role_arn=${AWS_ROLE_ARN:-}" >> "${GITHUB_ENV}"
+            echo "TF_VAR_ci_role_arn=${AWS_ROLE_ARN:-}" >> "${GITHUB_ENV}"
             ;;
           azure)
             : "${ARM_CLIENT_ID:?Set ARM_CLIENT_ID secret (Azure federated identity client ID)}"

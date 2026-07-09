@@ -130,8 +130,8 @@ resource "google_cloud_run_v2_service" "keycloak" {
 
       startup_probe {
         http_get {
-          path = "/auth/health/ready"
-          port = 8080
+          path = "/health/ready"
+          port = 9000
         }
         initial_delay_seconds = 10
         period_seconds        = 10
@@ -139,8 +139,8 @@ resource "google_cloud_run_v2_service" "keycloak" {
       }
       liveness_probe {
         http_get {
-          path = "/auth/health/live"
-          port = 8080
+          path = "/health/live"
+          port = 9000
         }
       }
     }

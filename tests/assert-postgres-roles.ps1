@@ -53,6 +53,21 @@ foreach ($cloud in $cloudRoots) {
     if ($roles -notmatch 'search_path\s*=') {
         throw "$cloud database_roles.tf does not set a service-role search_path"
     }
+
+    if ($cloud -eq "azure") {
+        $variablesFile = Join-Path $root "variables.tf"
+        $variables = Get-Content -Raw $variablesFile
+
+        if ($variables -notmatch 'variable\s+"manage_postgresql_roles"') {
+            throw "azure must expose manage_postgresql_roles to keep private PostgreSQL role management opt-in"
+        }
+        if ($variables -notmatch 'default\s*=\s*false') {
+            throw "azure manage_postgresql_roles must default to false because the private PostgreSQL endpoint is not reachable from normal Terraform runners"
+        }
+        if ($roles -notmatch 'var\.manage_postgresql_roles\s*\?\s*local\.app_db_roles\s*:\s*\{\}') {
+            throw "azure PostgreSQL role resources must be gated behind manage_postgresql_roles"
+        }
+    }
 }
 
 Write-Host "PostgreSQL app role Terraform structure is present for azure, aws, and gcp."

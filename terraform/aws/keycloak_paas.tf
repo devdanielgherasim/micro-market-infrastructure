@@ -218,8 +218,11 @@ resource "aws_apprunner_service" "keycloak" {
   }
 
   health_check_configuration {
-    protocol = "HTTP"
-    path     = "/auth/health/ready"
+    # App Runner health checks run against the configured service port
+    # (8080), while Keycloak 26 exposes HTTP health on its separate
+    # management port (9000). Use a TCP listener check here rather than
+    # enabling Keycloak's deprecated legacy observability interface on 8080.
+    protocol = "TCP"
   }
 
   tags = local.tags

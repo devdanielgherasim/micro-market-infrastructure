@@ -122,9 +122,9 @@ variable "cloudflare_api_token" {
   default     = ""
 }
 
-variable "gitlab_ci_role_arn" {
+variable "ci_role_arn" {
   type        = string
-  description = "ARN of the GitLab OIDC IAM role used by CI pipelines. Granted cluster-admin access so kubernetes-infrastructure Terraform can manage EKS resources."
+  description = "ARN of the OIDC IAM role used by CI pipelines. Granted cluster-admin access so kubernetes-infrastructure Terraform can manage EKS resources."
   default     = ""
 }
 

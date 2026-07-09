@@ -108,6 +108,12 @@ variable "database_name" {
   default     = "microservices"
 }
 
+variable "manage_postgresql_roles" {
+  type        = bool
+  description = "Manage application PostgreSQL roles, schemas, and grants through the PostgreSQL provider. Keep false for normal Azure applies because the PostgreSQL Flexible Server is private-only and Terraform runners outside the VNet cannot resolve or reach it; set true only when running Terraform from a network path with private DNS access to the server (e.g. a bastion/VPN inside the VNet). The recommended, repeatable path for provisioning catalog_svc/orders_svc/audit_svc is the in-cluster ArgoCD Sync-hook Job in platform-gitops/platform/postgres-app-roles (see platform-gitops/plans/2026-07-09-postgres-app-role-job.md) - AKS already has VNet peering + private DNS access to this server, so it needs no bastion. Do not set this true while that Job is also managing the same server: Terraform doesn't know about roles the Job creates out-of-band, so postgresql_role creation will fail with 'role already exists' unless state is reconciled first (e.g. via terraform import)."
+  default     = false
+}
+
 variable "cloudflare_api_token" {
   type        = string
   description = "Scoped Cloudflare API token for DNS automation and DNS-01 validation"

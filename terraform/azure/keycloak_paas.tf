@@ -79,6 +79,12 @@ resource "azurerm_container_app_environment" "keycloak" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.keycloak.id
   infrastructure_subnet_id   = azurerm_subnet.container_app_environment.id
   tags                       = local.tags
+
+  # Azure reports an implicit Consumption workload profile for this environment.
+  # The repo intentionally leaves it implicit to preserve the cheapest tier.
+  lifecycle {
+    ignore_changes = [workload_profile]
+  }
 }
 
 resource "azurerm_container_app" "keycloak" {
@@ -87,6 +93,12 @@ resource "azurerm_container_app" "keycloak" {
   resource_group_name          = azurerm_resource_group.this.name
   revision_mode                = "Single"
   tags                         = local.tags
+
+  # Omitting this uses the default Consumption profile; Azure still reads it
+  # back as "Consumption", which otherwise causes perpetual drift.
+  lifecycle {
+    ignore_changes = [workload_profile_name]
+  }
 
   identity {
     type         = "UserAssigned"
@@ -218,15 +230,26 @@ resource "azurerm_container_app" "keycloak" {
         value = "true"
       }
 
+      # Keycloak 26 exposes health checks on the management interface by
+      # default. The application HTTP listener keeps the /auth relative path,
+      # but management health remains at /health/* on port 9000.
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 9000
+        path                    = "/health/ready"
+        initial_delay           = 10
+        interval_seconds        = 10
+        failure_count_threshold = 18
+      }
       readiness_probe {
         transport = "HTTP"
-        port      = 8080
-        path      = "/auth/health/ready"
+        port      = 9000
+        path      = "/health/ready"
       }
       liveness_probe {
         transport = "HTTP"
-        port      = 8080
-        path      = "/auth/health/live"
+        port      = 9000
+        path      = "/health/live"
       }
     }
   }
