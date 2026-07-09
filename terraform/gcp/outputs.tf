@@ -78,6 +78,16 @@ output "secret_prefix" {
   description = "GCP Secret Manager prefix containing platform and application secrets"
 }
 
+output "postgresql_host" {
+  description = "Managed PostgreSQL public IP used by application and Keycloak secrets"
+  value       = google_sql_database_instance.postgresql.public_ip_address
+}
+
+output "postgresql_database" {
+  description = "Managed PostgreSQL database name"
+  value       = google_sql_database.microservices.name
+}
+
 output "gke_service_account_email" {
   value       = google_service_account.gke_nodes.email
   description = "GKE node service account email"
@@ -124,4 +134,14 @@ output "gitlab_ci_service_account_email" {
 output "gitlab_workload_identity_provider" {
   value       = try(google_iam_workload_identity_pool_provider.gitlab[0].name, null)
   description = "GCP Workload Identity Federation provider resource name for GitLab CI, when enabled"
+}
+
+output "keycloak_cloud_run_url" {
+  value       = google_cloud_run_v2_service.keycloak.uri
+  description = "Cloud Run default URL for Keycloak"
+}
+
+output "keycloak_domain_mapping_resource_records" {
+  value       = google_cloud_run_domain_mapping.keycloak.status
+  description = "DNS resource records to publish via the keycloak-dns DNSEndpoint for the Cloud Run domain mapping to validate"
 }

@@ -3,19 +3,21 @@ locals {
 
   platform_secret_payloads = {
     "postgresql/auth" = {
-      username          = "microservices_owner"
+      username          = local.db_admin_username
       password          = random_password.postgresql_owner.result
       postgres-password = random_password.postgresql_owner.result
       database          = var.database_name
+      host              = aws_db_instance.postgresql.address
+      port              = tostring(aws_db_instance.postgresql.port)
     }
     "keycloak/postgresql" = {
-      username          = "keycloak"
-      password          = random_password.keycloak_db.result
-      POSTGRES_USER     = "keycloak"
-      POSTGRES_PASSWORD = random_password.keycloak_db.result
-      POSTGRES_DB       = "keycloak"
-      POSTGRES_HOST     = "postgresql.postgresql.svc.cluster.local"
-      POSTGRES_PORT     = "5432"
+      username          = local.db_admin_username
+      password          = random_password.postgresql_owner.result
+      POSTGRES_USER     = local.db_admin_username
+      POSTGRES_PASSWORD = random_password.postgresql_owner.result
+      POSTGRES_DB       = var.database_name
+      POSTGRES_HOST     = aws_db_instance.postgresql.address
+      POSTGRES_PORT     = tostring(aws_db_instance.postgresql.port)
     }
     "keycloak/admin" = {
       username = "admin"
@@ -58,16 +60,25 @@ locals {
       password = random_password.argocd_redis.result
     }
     "catalog/db" = {
-      username = "catalog"
-      password = random_password.catalog_db.result
+      username = local.db_admin_username
+      password = random_password.postgresql_owner.result
+      host     = aws_db_instance.postgresql.address
+      port     = tostring(aws_db_instance.postgresql.port)
+      database = var.database_name
     }
     "orders/db" = {
-      username = "orders"
-      password = random_password.orders_db.result
+      username = local.db_admin_username
+      password = random_password.postgresql_owner.result
+      host     = aws_db_instance.postgresql.address
+      port     = tostring(aws_db_instance.postgresql.port)
+      database = var.database_name
     }
     "audit/db" = {
-      username = "audit"
-      password = random_password.audit_db.result
+      username = local.db_admin_username
+      password = random_password.postgresql_owner.result
+      host     = aws_db_instance.postgresql.address
+      port     = tostring(aws_db_instance.postgresql.port)
+      database = var.database_name
     }
     "microservices/keycloak" = {
       audit-service-secret   = random_password.audit_client.result
@@ -78,26 +89,6 @@ locals {
 }
 
 resource "random_password" "postgresql_owner" {
-  length  = 24
-  special = false
-}
-
-resource "random_password" "catalog_db" {
-  length  = 24
-  special = false
-}
-
-resource "random_password" "orders_db" {
-  length  = 24
-  special = false
-}
-
-resource "random_password" "audit_db" {
-  length  = 24
-  special = false
-}
-
-resource "random_password" "keycloak_db" {
   length  = 24
   special = false
 }

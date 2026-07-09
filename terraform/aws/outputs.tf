@@ -43,6 +43,16 @@ output "secret_prefix" {
   value       = local.secret_prefix
 }
 
+output "postgresql_host" {
+  description = "Managed PostgreSQL endpoint used by application and Keycloak secrets"
+  value       = aws_db_instance.postgresql.address
+}
+
+output "postgresql_database" {
+  description = "Managed PostgreSQL database name"
+  value       = aws_db_instance.postgresql.db_name
+}
+
 output "argocd_oidc_client_secret" {
   description = "Argo CD OIDC client secret seeded into cloud secret managers"
   value       = random_password.argocd_client.result
@@ -59,4 +69,19 @@ output "argocd_redis_password" {
   description = "ArgoCD Redis password stored in Secrets Manager under argocd/redis"
   value       = random_password.argocd_redis.result
   sensitive   = true
+}
+
+output "keycloak_ecr_repository_url" {
+  description = "ECR repository Keycloak's quay.io image must be mirrored into before App Runner can start it"
+  value       = aws_ecr_repository.keycloak.repository_url
+}
+
+output "keycloak_apprunner_service_url" {
+  description = "App Runner default service URL for Keycloak"
+  value       = aws_apprunner_service.keycloak.service_url
+}
+
+output "keycloak_custom_domain_certificate_validation_records" {
+  description = "CNAME records that must be published via the keycloak-dns DNSEndpoint before the App Runner custom domain validates"
+  value       = aws_apprunner_custom_domain_association.keycloak.certificate_validation_records
 }

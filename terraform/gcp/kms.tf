@@ -27,6 +27,8 @@ resource "google_kms_crypto_key" "artifact_registry" {
 # the key before the repository can be created with it. (google_project_service_identity
 # is GA as of provider ~4.35+; no google-beta provider required.)
 resource "google_project_service_identity" "artifact_registry" {
+  provider = google-beta
+
   project = var.project_id
   service = "artifactregistry.googleapis.com"
 }

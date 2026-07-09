@@ -126,3 +126,15 @@ variable "github_ref" {
   description = "Git ref allowed to use the Azure GitHub CI federated credential, e.g. refs/heads/main"
   default     = "refs/heads/main"
 }
+
+variable "secondary_location" {
+  type        = string
+  description = "Azure region for resources that don't need to co-locate with AKS (managed PostgreSQL, Keycloak's Container Apps Environment). Deliberately separate from `location`: this subscription's free-tier regional vCPU quota is per-region, so a second region gives these resources their own independent quota pool instead of competing with AKS nodes for the same 4-vCPU cap. Region eligibility for this subscription is opaque and only surfaces at apply time (seen live: germanywestcentral rejects Postgres Flexible Server with LocationIsOfferRestricted; westeurope rejected everything with RequestDisallowedByAzure/\"not accepting new customers\") - if northeurope also gets rejected, try overriding with `-var secondary_location=swedencentral` or `-var secondary_location=eastus` rather than editing this file again."
+  default     = "northeurope"
+}
+
+variable "keycloak_custom_domain_enabled" {
+  type        = bool
+  description = "Second phase of Keycloak's Container Apps custom-domain apply (ADR-19): leave false on the first apply, populate the keycloak-dns DNSEndpoint in platform-gitops from the keycloak_custom_domain_verification_id/keycloak_default_hostname outputs, then flip to true once those DNS records resolve to bind the custom domain and provision the managed certificate."
+  default     = false
+}

@@ -28,6 +28,16 @@ output "key_vault_uri" {
   description = "Azure Key Vault URI containing platform and application secrets"
 }
 
+output "postgresql_host" {
+  description = "Managed PostgreSQL endpoint used by application and Keycloak secrets"
+  value       = azurerm_postgresql_flexible_server.postgresql.fqdn
+}
+
+output "postgresql_database" {
+  description = "Managed PostgreSQL database name"
+  value       = azurerm_postgresql_flexible_server_database.microservices.name
+}
+
 output "argocd_oidc_client_secret" {
   description = "Argo CD OIDC client secret seeded into cloud secret managers"
   value       = random_password.argocd_client.result
@@ -74,4 +84,15 @@ output "gitlab_ci_client_id" {
 output "github_ci_client_id" {
   description = "Azure workload identity client ID for GitHub Actions CI, when enabled"
   value       = try(azurerm_user_assigned_identity.github_ci[0].client_id, null)
+}
+
+output "keycloak_default_hostname" {
+  description = "Container Apps default FQDN for Keycloak, used as the keycloak-dns DNSEndpoint's CNAME target until the custom domain is bound"
+  value       = azurerm_container_app.keycloak.latest_revision_fqdn
+}
+
+output "keycloak_custom_domain_verification_id" {
+  description = "Value for the required asuid.auth.danielgherasim.com TXT record, needed before keycloak_custom_domain_enabled can be set to true"
+  value       = azurerm_container_app.keycloak.custom_domain_verification_id
+  sensitive   = true
 }
