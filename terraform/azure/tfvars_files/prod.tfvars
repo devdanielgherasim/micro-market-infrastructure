@@ -1,4 +1,5 @@
-location       = "germanywestcentral"
+location            = "swedencentral"
+secondary_location  = "eastus"
 environment    = "prod"
 acr_sku_name   = "Basic"
 aks_vm_size    = "Standard_F2ams_v6"

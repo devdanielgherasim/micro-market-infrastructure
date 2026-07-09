@@ -1,4 +1,5 @@
-location       = "germanywestcentral"
+location            = "northeurope"
+secondary_location  = "swedencentral"
 environment    = "staging"
 acr_sku_name   = "Basic"
 aks_vm_size    = "Standard_F2ams_v6"
