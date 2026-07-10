@@ -121,6 +121,12 @@ variable "cloudflare_api_token" {
   default     = ""
 }
 
+variable "dns_domain" {
+  type        = string
+  description = "Base DNS domain used for public platform hostnames."
+  default     = "danielgherasim.com"
+}
+
 variable "gitlab_project_path" {
   type        = string
   description = "GitLab project path allowed to federate into the Azure CI identity, for example group/project. Leave empty to skip CI identity federation."

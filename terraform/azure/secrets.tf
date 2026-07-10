@@ -39,7 +39,7 @@ locals {
     "grafana-oauth" = {
       GRAFANA_OIDC_CLIENT_SECRET = random_password.grafana_oidc_client.result
       SMTP_PASSWORD              = random_password.smtp.result
-      DOMAIN                     = "danielgherasim.com"
+      DOMAIN                     = var.dns_domain
     }
     "alertmanager-smtp" = {
       SMTP_HOST     = "smtp.gmail.com:587"

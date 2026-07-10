@@ -92,7 +92,17 @@ output "keycloak_default_hostname" {
 }
 
 output "keycloak_custom_domain_verification_id" {
-  description = "Value for the required asuid.auth.danielgherasim.com TXT record, needed before keycloak_custom_domain_enabled can be set to true"
+  description = "Value for the required Keycloak custom-domain TXT record, needed before keycloak_custom_domain_enabled can be set to true"
   value       = azurerm_container_app.keycloak.custom_domain_verification_id
   sensitive   = true
+}
+
+output "keycloak_dns_name" {
+  description = "Environment-specific Keycloak DNS name managed by platform-gitops/keycloak-dns."
+  value       = local.keycloak_hostname
+}
+
+output "keycloak_dns_txt_name" {
+  description = "Environment-specific asuid TXT record name for Keycloak Container Apps custom-domain verification."
+  value       = "asuid.${local.keycloak_hostname}"
 }
