@@ -83,7 +83,7 @@ skip-check:
 
   # --- Azure (AKS) ---
 
-  # AKS API server authorized IP ranges: CI applies from GitLab SaaS shared
+  # AKS API server authorized IP ranges: CI applies from GitHub-hosted shared
   # runners with non-static, unpredictable egress IPs. Mirrors the same
   # CI-driven-apply tradeoff already made explicit for AWS's public EKS
   # endpoint above.
@@ -175,14 +175,14 @@ skip-check:
   # Single-region deployment (this cloud is spun up/demoed/destroyed one at a
   # time per the project plan) - no cross-region geo-replication needed.
   - CKV_AZURE_165
-  # CI pushes images to ACR from GitLab SaaS shared runners with no private
+  # CI pushes images to ACR from GitHub-hosted shared runners with no private
   # network path; disabling public network access requires Premium SKU +
   # private endpoint + VNET peering, out of scope for this lab.
   - CKV_AZURE_139
 
   # --- Azure (Key Vault) ---
 
-  # Terraform (from GitLab SaaS runners), External Secrets Operator, and AKS
+  # Terraform (from GitHub-hosted runners), External Secrets Operator, and AKS
   # workloads all need to reach the vault without a private endpoint / VNET
   # peering set up - same CI/operational tradeoff as the AKS/ACR public
   # networking skips above.

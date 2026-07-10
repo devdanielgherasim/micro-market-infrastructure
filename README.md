@@ -13,7 +13,7 @@ terraform/{aws,azure,gcp}/
   network.tf     # VPC/VNet + subnets
   cluster.tf     # EKS / AKS / GKE cluster + node pool(s)
   registry.tf    # ECR / ACR / Artifact Registry
-  identity.tf    # IRSA / workload identity federation / GitLab-OIDC federated auth
+  identity.tf    # IRSA / workload identity federation / CI OIDC federated auth
   kms.tf         # KMS keys (secrets envelope encryption, ECR/ACR image encryption, etc.)
   secrets.tf     # Seeds the cloud secret manager (Secrets Manager / Key Vault / Secret Manager)
   main.tf, providers.tf, variables.tf, outputs.tf, locals.tf
@@ -23,17 +23,17 @@ terraform/{aws,azure,gcp}/
 
 AWS additionally has `iam.tf` (EKS IRSA roles, ALB controller policy) and `platform_addon_iam.tf`; GCP additionally has `data.tf`. Azure's split is `network.tf`/`cluster.tf`/`identity.tf`/`kms.tf`/`registry.tf`/`secrets.tf` — same shape, no extra files. Each root also has a `.terraform.lock.hcl` (provider pins: azurerm ~>4.32/4.30 per root, google ~>6.37, aws ~>6.53, random ~>3.9).
 
-None of the three clouds carries an extra post-apply step over the others today — `apply.sh` in all three roots is env-var/workspace-driven with no hardcoded credentials, and the shared `.gitlab-ci.yml` pipeline branches on a single `CLOUD_PROVIDER` variable rather than having a cloud-specific job. (If you've read the sibling workspace's architecture guide and it says Azure is "most complete" with an extra `azure_post_apply` job — that predates this overhaul; all three clouds are structurally parallel now, per project decision.)
+None of the three clouds carries an extra post-apply step over the others today — `apply.sh` in all three roots is env-var/workspace-driven with no hardcoded credentials, and the shared `.github/workflows/ci.yml` pipeline branches on a single `CLOUD_PROVIDER` variable rather than having a cloud-specific job. (If you've read the sibling workspace's architecture guide and it says Azure is "most complete" with an extra `azure_post_apply` job — that predates this overhaul; all three clouds are structurally parallel now, per project decision.)
 
 ## Auth model
 
-No long-lived cloud credentials are stored anywhere in CI. Every cloud authenticates via GitLab OIDC:
+No long-lived cloud credentials are stored anywhere in CI. Every cloud authenticates via GitHub Actions' native OIDC support (`permissions: id-token: write`), wired up by the shared `.github/actions/terraform-cloud-setup` composite action:
 
-- **AWS**: `aws sts assume-role-with-web-identity` using GitLab's own OIDC token (`GITLAB_OIDC_TOKEN`, audience `https://gitlab.com`) against an IAM role (`AWS_ROLE_ARN`), yielding short-lived STS credentials.
-- **Azure**: `ARM_USE_OIDC=true` + `ARM_OIDC_TOKEN=$GITLAB_OIDC_TOKEN` against a federated identity credential on an Azure AD app (`ARM_CLIENT_ID`/`ARM_TENANT_ID`/`ARM_SUBSCRIPTION_ID`).
-- **GCP**: a hand-built [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) external-account credential file, constructed in CI from `GITLAB_OIDC_TOKEN` + `GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL`, fed to the provider via `GOOGLE_APPLICATION_CREDENTIALS`.
+- **AWS**: `aws-actions/configure-aws-credentials` assumes `AWS_ROLE_ARN` via GitHub's OIDC issuer (`token.actions.githubusercontent.com`), exporting short-lived credentials as env vars before Terraform runs.
+- **Azure**: `ARM_USE_OIDC=true` + `ARM_CLIENT_ID`/`ARM_TENANT_ID`/`ARM_SUBSCRIPTION_ID` — no separate login step; the `azurerm` provider itself exchanges the runner's `ACTIONS_ID_TOKEN_REQUEST_*` env vars for a federated token at `terraform init`/`plan` time.
+- **GCP**: `google-github-actions/auth` exchanges the OIDC token via [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) (`GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL`), no hand-built credential file needed.
 
-This replaced an earlier state where a real GCP service-account JSON key was committed to the repo (leaked, then rotated and purged — see `SECURITY.md` and the multicloud overhaul plan's Phase 0 for the incident). `.gitignore` now blocks `tfplan*`, `plan.json`, `*.tfstate*`, `i-binder-*.json`, `*.pem`/`*.p12`/`*.pfx`, and kubeconfigs; `.terraform.lock.hcl` is deliberately **not** ignored (HashiCorp's own guidance — commit it for reproducible provider resolution). A `.githooks/pre-commit` (gitleaks) and a GitLab Secret-Detection CI job (`.gitlab-ci.yml`'s `secret_detection` job, `validate` stage) both gate against reintroducing secrets.
+This replaced an earlier state where a real GCP service-account JSON key was committed to the repo (leaked, then rotated and purged — see `SECURITY.md` and the multicloud overhaul plan's Phase 0 for the incident). `.gitignore` now blocks `tfplan*`, `plan.json`, `*.tfstate*`, `i-binder-*.json`, `*.pem`/`*.p12`/`*.pfx`, and kubeconfigs; `.terraform.lock.hcl` is deliberately **not** ignored (HashiCorp's own guidance — commit it for reproducible provider resolution). A `.githooks/pre-commit` (gitleaks) and a `gitleaks` CI job (part of the shared `security-scan-gate.yml` reusable workflow) both gate against reintroducing secrets.
 
 ## Backend
 
@@ -41,18 +41,20 @@ Each root's state lives in a cloud-native remote backend: AWS in S3 (bucket `ter
 
 `terraform/gcp/REMOTE_BACKEND_SETUP.md` documents the one-time GCS bucket bootstrap for that cloud.
 
-## CI pipeline (`.gitlab-ci.yml`)
+## CI pipeline (`.github/workflows/ci.yml`)
 
-Single pipeline, parameterized by `CLOUD_PROVIDER` (default `aws`; also accepts `azure`/`gcp`), stages:
+CI runs on GitHub Actions (migrated from GitLab CI, see
+`Sources/plans/2026-07-08-gitlab-to-github-migration.md`). Security and
+static Terraform checks run on every push/PR; the remote-backend Terraform
+lifecycle jobs (`plan`/`apply`/`destroy`) stay `workflow_dispatch`-only since
+they need cloud OIDC credentials and intentionally target a selected
+cloud/environment:
 
-```
-validate → plan → apply (manual) → destroy (manual)
-```
-
-- `validate_infrastructure`: `terraform init` (with the OIDC-derived backend args for the selected cloud) → `terraform validate` → `terraform fmt -check -diff`.
-- `checkov`: static IaC security scan (`bridgecrew/checkov:latest -d terraform/ --config-file .checkov.yaml`), run in the `validate` stage but deliberately independent of `validate_infrastructure`'s init/plugins — a checkov finding never blocks on an unrelated fmt/validate failure and vice versa. It scans all three cloud roots regardless of `CLOUD_PROVIDER`.
-- `plan_infrastructure`: creates/selects a Terraform workspace named after the (sanitized) branch, runs `terraform plan --var-file=tfvars_files/$WORKSPACE.tfvars`, uploads `tfplan` + a `plan.json` (consumed by GitLab's native Terraform plan-diff MR widget).
-- `apply_infrastructure` / `destroy_infrastructure`: both `when: manual`, apply the saved plan / destroy the selected workspace.
+- `terraform-validate-static`: `terraform init` (no backend, matrix over all three clouds) → `terraform validate` → `terraform fmt -check -diff`. Runs on every push/PR.
+- `checkov`: static IaC security scan (`bridgecrew/checkov` against `terraform/` with `.checkov.yaml`), independent of the validate jobs' init/plugins — a checkov finding never blocks on an unrelated fmt/validate failure and vice versa. It scans all three cloud roots regardless of `CLOUD_PROVIDER`.
+- `validate-remote` (`workflow_dispatch` only): `terraform init` with the OIDC-derived backend args for the selected cloud (via `terraform-cloud-setup`), then validate/fmt against the real remote backend.
+- `plan` (`workflow_dispatch`): creates/selects a Terraform workspace, runs `terraform plan --var-file=tfvars_files/$WORKSPACE.tfvars`, uploads `tfplan` as a workflow artifact.
+- `apply`/`destroy` (`workflow_dispatch`, explicit `action` input): apply the saved plan / destroy the selected workspace.
 
 `checkov` doesn't do its own severity lookup here (that needs a Bridgecrew/Prisma API call); every finding was triaged individually and is either fixed directly in the Terraform or accepted with a per-check-ID, per-reason entry in `.checkov.yaml`.
 
@@ -70,7 +72,7 @@ Findings that were genuinely fixable were fixed directly instead of skipped: ful
 
 ## Local dev caveat
 
-On at least one prior development machine, `terraform validate`/`plan` fails locally with `x509: certificate signed by unknown authority` — this is **Norton's TLS-interception IDS module (aswidsagent)** intercepting the loopback handshake between the `terraform` binary and its downloaded provider plugins, not a bug in this repo. Add a Norton exclusion for `terraform.exe` and `.terraform\providers\**\*.exe` (or disable Norton's traffic inspection for those processes) to unblock local runs. GitLab CI runners are unaffected.
+On at least one prior development machine, `terraform validate`/`plan` fails locally with `x509: certificate signed by unknown authority` — this is **Norton's TLS-interception IDS module (aswidsagent)** intercepting the loopback handshake between the `terraform` binary and its downloaded provider plugins, not a bug in this repo. Add a Norton exclusion for `terraform.exe` and `.terraform\providers\**\*.exe` (or disable Norton's traffic inspection for those processes) to unblock local runs. GitHub-hosted CI runners are unaffected.
 
 ## Which cloud is most complete
 

@@ -2,11 +2,11 @@
 
 ## Never commit credentials
 
-All cloud credentials come from environment variables (locally) or GitLab CI variables /
-OIDC federation (pipelines). `apply.sh`/`destroy.sh` fail fast when credentials are unset.
+All cloud credentials come from environment variables (locally) or GitHub Actions secrets/variables
++ OIDC federation (pipelines). `apply.sh`/`destroy.sh` fail fast when credentials are unset.
 `.gitignore` blocks state files, plan artifacts (`tfplan`, `plan.json`), and key material
-(`*service-account*.json`, `*-key.json`, `*.pem`, ...). CI runs GitLab Secret Detection on
-every pipeline.
+(`*service-account*.json`, `*-key.json`, `*.pem`, ...). CI runs gitleaks (part of the shared
+`security-scan-gate.yml` reusable workflow) on every pipeline.
 
 ## Pre-commit secret scanning (recommended)
 

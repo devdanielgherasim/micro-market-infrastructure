@@ -38,7 +38,7 @@ Before you can use the Terraform scripts in this repository with a remote backen
 
 ### 4. Configure Identity for Terraform
 
-Use user application-default credentials for local runs, or GitLab Workload Identity Federation for CI. Do not create or download long-lived service-account JSON keys.
+Use user application-default credentials for local runs, or GitHub Actions' Workload Identity Federation for CI. Do not create or download long-lived service-account JSON keys.
 
 For a local operator identity, grant the following roles as needed:
    - Storage Admin (`roles/storage.admin`)
@@ -107,7 +107,7 @@ After updating the scripts with your configuration:
 
 1. **Permission Denied**: Ensure your service account has the necessary permissions.
 2. **Bucket Not Found**: Verify the bucket name is correct and the bucket exists.
-3. **Invalid Credentials**: Re-run `gcloud auth application-default login` locally, or check the GitLab Workload Identity Federation provider and service account variables in CI.
+3. **Invalid Credentials**: Re-run `gcloud auth application-default login` locally, or check the Workload Identity Federation provider and service account secrets/variables in CI.
 4. **API Not Enabled**: Ensure all required APIs are enabled in your GCP project.
 
 For more information, see the [Terraform GCS Backend Documentation](https://www.terraform.io/docs/language/settings/backends/gcs.html).
