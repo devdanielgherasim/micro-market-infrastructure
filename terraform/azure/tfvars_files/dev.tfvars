@@ -6,9 +6,6 @@ node_count     = 2
 min_node_count = 2
 max_node_count = 2
 
-# Free Azure accounts here have a 4 regional vCPU quota. Keep dev capped at
-# 2 x 2-vCPU nodes and disable Azure Policy/Gatekeeper to leave room for the
-# GitOps platform and app demo workloads.
 azure_policy_enabled = false
 
 github_repos = [
