@@ -108,6 +108,10 @@ jobs:
   validate-remote:
     name: Terraform validate (remote backend)
     if: ${{ github.event_name == 'workflow_dispatch' }}
+    needs:
+      - security-scan-gate
+      - checkov
+      - terraform-validate-static
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,7 +158,8 @@ jobs:
   plan:
     name: Terraform plan
     if: ${{ github.event_name == 'workflow_dispatch' && vars.TERRAFORM_OPERATION != 'destroy' }}
-    needs: validate-remote
+    needs:
+      - validate-remote
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -287,7 +292,8 @@ jobs:
   destroy:
     name: Terraform destroy
     if: ${{ github.event_name == 'workflow_dispatch' && vars.TERRAFORM_OPERATION == 'destroy' && vars.CONFIRM_DESTROY == format('destroy-{0}-{1}', vars.CLOUD_PROVIDER || 'aws', vars.ENVIRONMENT || 'dev') }}
-    needs: validate-remote
+    needs:
+      - validate-remote
     environment: ${{ vars.ENVIRONMENT || 'dev' }}
     runs-on: ubuntu-latest
     permissions:
